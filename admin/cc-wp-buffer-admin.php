@@ -65,11 +65,19 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			self::ID // Page ID for the options page
 		);
 		
-		// Default post/page settings
+		// Default post settings
 		add_settings_section(
-			'postpage', // Name of the section
-			'Post/Page Settings', // Title of the section, displayed on the options page
-			array( &$this, 'postpage_callback' ), // Callback method to display plugin options
+			'posts', // Name of the section
+			'Posts', // Title of the section, displayed on the options page
+			array( &$this, 'posts_callback' ), // Callback method to display plugin options
+			self::ID // Page ID for the options page
+		);
+		
+		// Default page settings
+		add_settings_section(
+			'pages', // Name of the section
+			'Pages', // Title of the section, displayed on the options page
+			array( &$this, 'pages_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
 		
@@ -77,7 +85,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		add_settings_section(
 			'schedule', // Name of the section
 			'Schedule', // Title of the section, displayed on the options page
-			array( &$this, 'postpage_callback' ), // Callback method to display plugin options
+			array( &$this, 'schedule_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
 	} // End set_options_sections()
@@ -122,6 +130,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	 		'page_publish_syntax' => 'New Page: {title} {url}', // Syntax of Buffer message when a post is published
 	 		'page_update_synxat' => 'Updated Page: {title} {url}', // Syntax of Buffer message when a post is updated
 	 		'page_networks' => NULL, // Social networks Buffer should push to when a post is published/updated
+	 		'schedule' => NULL // Default Buffer push schedule
 	 	);
 	 	
 	 	// Add options to database
