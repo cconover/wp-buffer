@@ -1,7 +1,7 @@
 === Buffer for WordPress ===
 Contributors: cconover
 Donate link: https://christiaanconover.com/code/wp-buffer#donate
-Tags: buffer, bufferapp, sharing, social
+Tags: buffer, bufferapp, sharing, social, twitter, facebook, linkedin
 Requires at least: 3.6
 Tested up to: 3.8.1
 Stable tag: 0.1.0
