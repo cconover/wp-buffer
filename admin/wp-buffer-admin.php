@@ -99,5 +99,12 @@ class cc_buffer_admin extends cc_buffer {
 	 	// Add options to database
 	 	add_option( $this->prefix . 'options', $options );
 	} // End activate()
+	
+	// Plugin deactivation
+	public function deactivate() {
+		// Remove the plugin options from the database
+		delete_option( $this->prefix . 'options' );
+	} // End deactivate
+	/* End plugin activation and deactivation */
 }
 ?>
