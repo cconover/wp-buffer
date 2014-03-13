@@ -104,7 +104,14 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	 	
 	 	// Default plugin options
 	 	$options = array(
-	 		
+	 		'client_id' => NULL, // Application client ID
+	 		'client_secret' => NULL, // Application client secret
+	 		'post_publish_syntax' => 'New Post: {title} {url}', // Syntax of Buffer message when a post is published
+	 		'post_update_synxat' => 'Updated Post: {title} {url}', // Syntax of Buffer message when a post is updated
+	 		'post_networks' => NULL, // Social networks Buffer should push to when a post is published/updated
+	 		'page_publish_syntax' => 'New Page: {title} {url}', // Syntax of Buffer message when a post is published
+	 		'page_update_synxat' => 'Updated Page: {title} {url}', // Syntax of Buffer message when a post is updated
+	 		'page_networks' => NULL, // Social networks Buffer should push to when a post is published/updated
 	 	);
 	 	
 	 	// Add options to database
