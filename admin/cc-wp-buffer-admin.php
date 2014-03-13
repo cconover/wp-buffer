@@ -35,6 +35,11 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		);
 	} // End create_options_menu()
 	
+	// Render options page
+	function options_page() {
+		
+	} // End options_page()
+	
 	// Set up options page
 	function set_options_init() {
 		// Register the plugin settings
@@ -82,6 +87,11 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	function set_options_fields() {
 		
 	} // End set_options_fields()
+	
+	// Validate plugin options
+	function options_validate() {
+		
+	} // End options_validate()
 	/* End plugin options */
 	
 	/* Plugin activation and deactivation */
