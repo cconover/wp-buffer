@@ -68,6 +68,6 @@ class cc_wp_buffer {
  **/
 
 // Create plugin object in the global space
-global $cc_buffer;
-$cc_buffer = new cc_wp_buffer;
+global $cc_wp_buffer;
+$cc_wp_buffer = new cc_wp_buffer;
 ?>
