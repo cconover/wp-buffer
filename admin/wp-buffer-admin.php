@@ -15,6 +15,7 @@ class cc_buffer_admin extends cc_buffer {
 		
 		/* Hooks and filters */
 		add_action( 'admin_menu', array( &$this, 'create_options_menu' ) ); // Add menu entry to Settings menu
+		add_action( 'admin_init', array( &$this, 'set_options_init' ) ); // Initialize plugin options
 		/* End hooks and filters */
 	} // End __construct()
 	
@@ -32,6 +33,71 @@ class cc_buffer_admin extends cc_buffer {
 			array( &$this, 'options_page' ) // Function to render the options page
 		);
 	} // End create_options_menu()
+	
+	// Set up options page
+	function set_options_init() {
+		// Register the plugin settings
+		register_setting(
+			$this->prefix . 'options_fields', // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
+			$this->prefix . 'options', // The name of the plugin options entry in the database.
+			array( &$this, 'options_validate' ) // The callback method to validate plugin options
+		);
+		
+		// Load options page sections
+		$this->set_options_sections();
+		
+		// Load options fields
+		$this->set_options_fields();
+	} // End set_options_init()
+	
+	// Set up options page sections
+	function set_options_sections() {
+		// Authorize plugin with Buffer
+		add_settings_section(
+			'auth', // Name of the section
+			'Authorization', // Title of the section, displayed on the options page
+			array( &$this, 'auth_callback' ), // Callback method to display plugin options
+			self::ID // Page ID for the options page
+		);
+		
+		// Default post/page settings
+		add_settings_section(
+			'postpage', // Name of the section
+			'Post/Page Settings', // Title of the section, displayed on the options page
+			array( &$this, 'postpage_callback' ), // Callback method to display plugin options
+			self::ID // Page ID for the options page
+		);
+		
+		// Default scheduling settings
+		add_settings_section(
+			'schedule', // Name of the section
+			'Schedule', // Title of the section, displayed on the options page
+			array( &$this, 'postpage_callback' ), // Callback method to display plugin options
+			self::ID // Page ID for the options page
+		);
+	} // End set_options_sections()
+	
+	// Set up options fields
+	function set_options_fields() {
+		
+	} // End set_options_fields()
 	/* End plugin options */
+	
+	/* Plugin activation and deactivation */
+	// Plugin activation
+	public function activate() {
+		// Check to make sure the version of WordPress being used is compatible with the plugin
+		if ( version_compare( get_bloginfo( 'version' ), self::VERSION, '<' ) ) {
+	 		wp_die( 'Your version of WordPress is too old to use this plugin. Please upgrade to the latest version of WordPress.' );
+	 	}
+	 	
+	 	// Default plugin options
+	 	$options = array(
+	 		
+	 	);
+	 	
+	 	// Add options to database
+	 	add_option( $this->prefix . 'options', $options );
+	} // End activate()
 }
 ?>
