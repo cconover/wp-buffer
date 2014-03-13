@@ -7,22 +7,22 @@
  * Author: Christiaan Conover
  * Author URI: https://christiaanconover.com?ref=wp-buffer-plugin-author-uri
  * License: GPLv2
- * @package cc-buffer
+ * @package cc-wp-buffer
  **/
 
 /**
  * Main plugin class
  **/
-class cc_buffer {
+class cc_wp_buffer {
 	/* Plugin constants */
-	const ID = 'cc-buffer'; // Plugin identifier
+	const ID = 'cc-wp-buffer'; // Plugin ID
 	const NAME = 'Buffer for WordPress'; // Plugin name
 	const VERSION = '0.1.0-alpha'; // Plugin version
-	const WPVER = '3.8'; // Minimum version of WordPress required for this plugin
+	const WPVER = '3.6'; // Minimum version of WordPress required for this plugin
 	/* End plugin constants */
 	
 	/* Plugin properties */
-	protected $prefix = 'cc_buffer_'; // Plugin database prefix
+	protected $prefix = 'cc_wp_buffer_'; // Plugin database prefix
 	protected $options = array(); // Plugin options
 	protected $pluginpath; // Plugin directory path
 	protected $pluginfile; // Plugin file path
@@ -35,8 +35,8 @@ class cc_buffer {
 		
 		/* Admin elements (only loaded if in admin) */
 		if ( is_admin() ) {
-			require_once( $this->pluginpath . '/admin/wp-buffer-admin.php' ); // Require the file containing the plugin admin class
-			$admin = new cc_buffer_admin; // Create new admin object
+			require_once( $this->pluginpath . '/admin/' . self::ID . '-admin.php' ); // Require the file containing the plugin admin class
+			$admin = new cc_wp_buffer_admin; // Create new admin object
 			
 			// Admin hooks and filters to be loaded by the main plugin class
 			register_activation_hook( $this->pluginfile, array( &$admin, 'activate' ) ); // Plugin activation
@@ -69,5 +69,5 @@ class cc_buffer {
 
 // Create plugin object in the global space
 global $cc_buffer;
-$cc_buffer = new cc_buffer;
+$cc_buffer = new cc_wp_buffer;
 ?>
