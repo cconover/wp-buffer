@@ -1,13 +1,14 @@
 <?php
 /**
  * Admin elements for the Buffer for WordPress plugin
- * admin/wp-buffer-admin.php
+ * admin/cc-wp-buffer-admin.php
  **/
 
 /**
  * Admin plugin class
+ * Extends main plugin class
  **/
-class cc_buffer_admin extends cc_buffer {
+class cc_wp_buffer_admin extends cc_wp_buffer {
 	// Class constructor
 	function __construct() {
 		// Initialize
