@@ -21,8 +21,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	} // End __construct()
 	
 	/*
-	Plugin options
-	Uses WordPress Options API
+	===== Admin Plugin Options =====
 	*/
 	// Create submenu entry under the Settings menu
 	function create_options_menu() {
@@ -85,16 +84,27 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	
 	// Set up options fields
 	function set_options_fields() {
-		
+		// Buffer application client ID
+		add_settings_field(
+			'client_id', // Field ID
+			'Client ID', // Field title/label, displayed to the user
+			array( &$this, 'client_id_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'auth' // Settings section in which to display the field
+		);
 	} // End set_options_fields()
 	
 	// Validate plugin options
 	function options_validate() {
 		
 	} // End options_validate()
-	/* End plugin options */
+	/*
+	===== End Admin Plugin Options =====
+	*/
 	
-	/* Plugin activation and deactivation */
+	/*
+	===== Plugin Activation and Deactivation =====
+	*/
 	// Plugin activation
 	public function activate() {
 		// Check to make sure the version of WordPress being used is compatible with the plugin
@@ -123,6 +133,8 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		// Remove the plugin options from the database
 		delete_option( $this->prefix . 'options' );
 	} // End deactivate
-	/* End plugin activation and deactivation */
+	/*
+	===== End Plugin Activation and Deactivation =====
+	*/
 }
 ?>
