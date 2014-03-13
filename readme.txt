@@ -2,7 +2,7 @@
 Contributors: cconover
 Donate link: https://christiaanconover.com/code/wp-buffer#donate
 Tags: buffer, bufferapp, sharing, social
-Requires at least: 3.8
+Requires at least: 3.6
 Tested up to: 3.8.1
 Stable tag: 0.1.0
 License: GPLv2
