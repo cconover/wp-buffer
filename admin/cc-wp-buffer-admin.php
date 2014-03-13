@@ -100,6 +100,60 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			self::ID, // Page ID for the options page
 			'auth' // Settings section in which to display the field
 		);
+		
+		// Buffer application client secret
+		add_settings_field(
+			'client_secret', // Field ID
+			'Client secret', // Field title/label, displayed to the user
+			array( &$this, 'client_secret_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'auth' // Settings section in which to display the field
+		);
+		
+		// Syntax of Buffer message for publishing posts
+		add_settings_field(
+			'post_publish_syntax', // Field ID
+			'Publish Post', // Field title/label, displayed to the user
+			array( &$this, 'post_publish_syntax_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'posts' // Settings section in which to display the field
+		);
+		
+		// Social media networks to which Buffer should send posts
+		add_settings_field(
+			'post_networks', // Field ID
+			'Social Media', // Field title/label, displayed to the user
+			array( &$this, 'post_networks_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'posts' // Settings section in which to display the field
+		);
+		
+		// Syntax of Buffer message for publishing pages
+		add_settings_field(
+			'page_publish_syntax', // Field ID
+			'Publish Page', // Field title/label, displayed to the user
+			array( &$this, 'page_publish_syntax_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'pages' // Settings section in which to display the field
+		);
+		
+		// Social media networks to which Buffer should send pages
+		add_settings_field(
+			'page_networks', // Field ID
+			'Social Media', // Field title/label, displayed to the user
+			array( &$this, 'page_networks_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'pages' // Settings section in which to display the field
+		);
+		
+		// Publishing schedule
+		add_settings_field(
+			'schedule', // Field ID
+			'Buffer Schedule', // Field title/label, displayed to the user
+			array( &$this, 'schedule_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'schedule' // Settings section in which to display the field
+		);
 	} // End set_options_fields()
 	
 	// Validate plugin options
