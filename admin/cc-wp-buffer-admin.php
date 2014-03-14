@@ -169,11 +169,33 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		add_settings_field(
 			'schedule', // Field ID
 			'Buffer Schedule', // Field title/label, displayed to the user
-			array( &$this, 'schedule_callback' ), // Callback method to display the option field
+			array( &$this, 'schedule_option_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
 			'schedule' // Settings section in which to display the field
 		);
 	} // End set_options_fields()
+	
+	/* Plugin options callbacks */
+	// Authorization section
+	function auth_callback() {
+		echo '<p>In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create">register it as a Buffer application</a>.</p>';
+	} // End auth_callback()
+	
+	// Posts section
+	function posts_callback() {
+		echo '<p>Please specify the way Buffer should handle posts you publish on this site.</p>';
+	} // End posts_callback()
+	
+	// Pages section
+	function pages_callback() {
+		echo '<p>Please specify the way Buffer should handle pages you publish on this site.</p>';
+	} // End pages_callback()
+	
+	// Schedule section
+	function schedule_callback() {
+		echo '<p>Please set the posting interval Buffer should use when you publish a new post or page.</p>';
+	} // End schedule_callback()
+	/* End plugin options callbacks */
 	
 	// Validate plugin options
 	function options_validate() {
@@ -197,6 +219,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	 	$options = array(
 	 		'client_id' => NULL, // Application client ID
 	 		'client_secret' => NULL, // Application client secret
+	 		'access_token' => NULL, // Access token, for the Buffer account used to publish posts globally
 	 		'post_publish_syntax' => 'New Post: {title} {url}', // Syntax of Buffer message when a post is published
 	 		'post_update_synxat' => 'Updated Post: {title} {url}', // Syntax of Buffer message when a post is updated
 	 		'post_networks' => NULL, // Social networks Buffer should push to when a post is published/updated
