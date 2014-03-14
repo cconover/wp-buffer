@@ -67,16 +67,20 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			array( &$this, 'options_validate' ) // The callback method to validate plugin options
 		);
 		
-		// Load options page sections
-		$this->set_options_sections();
+		// Load plugin options for authorization
+		$this->auth_options();
 		
-		// Load options fields
-		$this->set_options_fields();
+		// If client ID & secret are saved, load the rest of the options
+		if ( isset( $this->options['client_id'] ) && isset( $this->options['client_secret'] ) ) {
+			// Options page sections and fields
+			$this->set_options_sections();
+			$this->set_options_fields();
+		}
 	} // End set_options_init()
 	
-	// Set up options page sections
-	function set_options_sections() {
-		// Authorize plugin with Buffer
+	// Options for Buffer authorization
+	function auth_options() {
+		// Options section
 		add_settings_section(
 			'auth', // Name of the section
 			'Authorization', // Title of the section, displayed on the options page
@@ -84,6 +88,27 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			self::ID // Page ID for the options page
 		);
 		
+		// Buffer application client ID
+		add_settings_field(
+			'client_id', // Field ID
+			'Client ID', // Field title/label, displayed to the user
+			array( &$this, 'client_id_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'auth' // Settings section in which to display the field
+		);
+		
+		// Buffer application client secret
+		add_settings_field(
+			'client_secret', // Field ID
+			'Client secret', // Field title/label, displayed to the user
+			array( &$this, 'client_secret_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'auth' // Settings section in which to display the field
+		);
+	} // End auth_options()
+	
+	// Set up options page sections
+	function set_options_sections() {		
 		// Default post settings
 		add_settings_section(
 			'posts', // Name of the section
@@ -111,20 +136,11 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	
 	// Set up options fields
 	function set_options_fields() {
-		// Buffer application client ID
+		// Buffer access token for account used globally on the WordPress site
 		add_settings_field(
-			'client_id', // Field ID
-			'Client ID', // Field title/label, displayed to the user
-			array( &$this, 'client_id_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'auth' // Settings section in which to display the field
-		);
-		
-		// Buffer application client secret
-		add_settings_field(
-			'client_secret', // Field ID
-			'Client secret', // Field title/label, displayed to the user
-			array( &$this, 'client_secret_callback' ), // Callback method to display the option field
+			'access_token', // Field ID
+			NULL, // Field title/label, displayed to the user
+			array( &$this, 'access_token_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
 			'auth' // Settings section in which to display the field
 		);
@@ -178,7 +194,14 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	/* Plugin options callbacks */
 	// Authorization section
 	function auth_callback() {
-		echo '<p>In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create">register it as a Buffer application</a>.</p>';
+		// If client ID & secret haven't yet been saved, display this message
+		if ( ! isset( $this->options['client_id'] ) || ! isset( $this->options['client_secret'] ) ) {
+			echo '<p>In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create">register it as a Buffer application</a>.</p><p>Once Client ID and Client Secret are set, the rest of the plugin options will be available.</p>';
+		}
+		// If they have been saved, display this one instead
+		else {
+			
+		}
 	} // End auth_callback()
 	
 	// Posts section
@@ -195,6 +218,25 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	function schedule_callback() {
 		echo '<p>Please set the posting interval Buffer should use when you publish a new post or page.</p>';
 	} // End schedule_callback()
+	
+	// Client ID
+	function client_id_callback() {
+		?>
+		<input name="<?php echo $this->prefix; ?>client_id" id="<?php echo $this->prefix; ?>client_id" value="<?php echo $this->options['client_id']; ?>" size=40>
+		<?php
+	} // End client_id_callback()
+	
+	// Client secret
+	function client_secret_callback() {
+		?>
+		<input name="<?php echo $this->prefix; ?>client_secret" id="<?php echo $this->prefix; ?>client_secret" value="<?php echo $this->options['client_id']; ?>" size=40>
+		<?php
+	} // End client_id_callback()
+	
+	// Access token
+	function access_token_callback() {
+		
+	} // End client_id_callback()
 	/* End plugin options callbacks */
 	
 	// Validate plugin options
