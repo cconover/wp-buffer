@@ -190,15 +190,6 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			'fb' // Settings section in which to display the field
 		);
 		
-		// Schedule for Facebook messages
-		add_settings_field(
-			'fb_schedule', // Field ID
-			'Schedule for Facebook Posts', // Field title/label, displayed to the user
-			array( &$this, 'fb_schedule_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'fb' // Settings section in which to display the field
-		);
-		
 		// Enable LinkedIn
 		add_settings_field(
 			'twitter_send', // Field ID
@@ -216,15 +207,6 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			self::ID, // Page ID for the options page
 			'linkedin' // Settings section in which to display the field
 		);
-		
-		// Schedule for LinkedIn
-		add_settings_field(
-			'linkedin_schedule', // Field ID
-			'Schedule for LinkedIn Posts', // Field title/label, displayed to the user
-			array( &$this, 'linkedin_schedule_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'linkedin' // Settings section in which to display the field
-		);
 	} // End set_options_fields()
 	
 	/* Plugin options callbacks */
@@ -232,27 +214,27 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
 		if ( ! $this->options['client_id'] || ! $this->options['client_secret'] ) {
-			echo '<p style="color: #E30000;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a>.</p><p>Once Client ID and Client Secret are set, the rest of the plugin options will be available.</p>';
+			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Once Client ID and Client Secret are set, the rest of the plugin options will be available.</p>';
 		}
 		// If they have been saved, display this one instead
 		else {
-			echo '<p style="color: #199E22;">This site has been set up with valid Buffer app credentials! Have fun!';
+			echo '<p style="color: #199E22;">This site has a valid Buffer client ID and client secret. Have fun!</p>';
 		}
 	} // End auth_callback()
 	
 	// Twitter section
 	function twitter_callback() {
-		echo '<p>Please set up your options for sending to Twitter.';
+		
 	} // End twitter_callback()
 	
 	// Facebook section
 	function fb_callback() {
-		echo '<p>Please set up your options for sending to Facebook.';
+		
 	} // End fb_callback()
 	
 	// LinkedIn section
 	function linkedin_callback() {
-		echo '<p>Please set up your options for sending to LinkedIn.';
+		
 	} // End linkedin_callback()
 	
 	// Client ID
@@ -280,48 +262,98 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	
 	// Enable Twitter
 	function twitter_send_callback() {
-		
+		// Determine whether checkbox should be checked
+		if ( $this->options['twitter_send'] == 'yes' ) {
+			$checked = 'checked';
+		}
+		else {
+			$checked = NULL;
+		}
+		echo '<input type="checkbox" name ="' . $this->prefix . 'options[twitter_send]" id="' . $this->prefix . 'options[twitter_send]" value="yes" ' . $checked . '>';
 	} // End twitter_send_callback()
 	
 	// Twitter syntax
 	function twitter_publish_syntax_callback() {
-		
+		echo '<input type="text" name="' . $this->prefix . 'options[twitter_publish_syntax]" id="' . $this->prefix . 'options[twitter_publish_syntax]" value="' . $this->options['twitter_publish_syntax'] . '" size=40><br />';
+		echo '<span class="description">Available tags: {title}, {url}</span>';
 	} // End twitter_publish_syntax_callback()
 	
 	// Twitter schedule
 	function twitter_schedule_callback() {
+		// Set up input field for number of additional tweets to send
+		$numposts = '<select name="' . $this->prefix . 'options[twitter_post_number]" required>';
+		// Use loop to create options for select menu
+		for ( $i = 0; $i <= 10; $i++ ) {
+			// If the option value is the one saved in the database, mark it as selected
+			if ( $i == $this->options['twitter_post_number'] ) {
+				$selected = 'selected';
+			}
+			else {
+				$selected = NULL;
+			}
+			
+			$numposts .= '<option value=' . $i . ' ' . $selected . '>' . $i . '</option>';
+		}
+		// Close the select menu
+		$numposts .= '</select>';
 		
+		// Set up input field for interval (in hours) between tweets
+		$interval = '<select name="' . $this->prefix . 'options[twitter_post_interval]" required>';
+		// Use loop to create options for select menu
+		for ( $i = 1; $i <= 24; $i++ ) {
+			// If the option value is the one saved in the database, mark it as selected
+			if ( $i == $this->options['twitter_post_interval'] ) {
+				$selected = 'selected';
+			}
+			else {
+				$selected = NULL;
+			}
+			
+			$interval .= '<option value=' . $i . ' ' . $selected . '>' . $i . '</option>';
+		}
+		// Close the select menu
+		$interval .= '</select>';
+		
+		// Show the options fields with explanation
+		echo '<p>Send ' . $numposts . ' additional tweets, spaced ' . $interval . ' hours apart</p>';
+		echo '<em>A tweet will automatically be sent when a post is published. This setting lets you schedule follow-up tweets to be sent by Buffer.</em>';
 	} // End twitter_schedule_callback()
 	
 	// Enable Facebook
 	function fb_send_callback() {
-		
+		// Determine whether checkbox should be checked
+		if ( $this->options['fb_send'] == 'yes' ) {
+			$checked = 'checked';
+		}
+		else {
+			$checked = NULL;
+		}
+		echo '<input type="checkbox" name ="' . $this->prefix . 'options[fb_send]" id="' . $this->prefix . 'options[fb_send]" value="yes" ' . $checked . '>';
 	} // End fb_send_callback()
 	
 	// Facebook syntax
 	function fb_publish_syntax_callback() {
-		
+		echo '<input type="text" name="' . $this->prefix . 'options[fb_publish_syntax]" id="' . $this->prefix . 'options[fb_publish_syntax]" value="' . $this->options['fb_publish_syntax'] . '" size=40><br />';
+		echo '<span class="description">Available tags: {title}, {url}</span>';
 	} // End fb_publish_syntax_callback()
-	
-	// Facebook schedule
-	function fb_schedule_callback() {
-		
-	} // End fb_schedule_callback()
 	
 	// Enable LinkedIn
 	function linkedin_send_callback() {
-		
+		// Determine whether checkbox should be checked
+		if ( $this->options['linkedin_send'] == 'yes' ) {
+			$checked = 'checked';
+		}
+		else {
+			$checked = NULL;
+		}
+		echo '<input type="checkbox" name ="' . $this->prefix . 'options[linkedin_send]" id="' . $this->prefix . 'options[linkedin_send]" value="yes" ' . $checked . '>';
 	} // End linkedin_send_callback()
 	
 	// LinkedIn syntax
 	function linkedin_publish_syntax_callback() {
-		
+		echo '<input type="text" name="' . $this->prefix . 'options[linkedin_publish_syntax]" id="' . $this->prefix . 'options[linkedin_publish_syntax]" value="' . $this->options['linkedin_publish_syntax'] . '" size=40><br />';
+		echo '<span class="description">Available tags: {title}, {url}</span>';
 	} // End linkedin_publish_syntax_callback()
-	
-	// LinkedIn schedule
-	function linkedin_schedule_callback() {
-		
-	} // End linkedin_schedule_callback()
 	/* End plugin options callbacks */
 	
 	// Validate plugin options
@@ -334,6 +366,66 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			$options['client_id'] = $input['client_id']; // Application client ID
 			$options['client_secret'] = $input['client_secret']; // Application client secret
 		}
+		
+		/* Twitter options */
+		// Check the value for enabling Twitter
+		if ( $input['twitter_send'] == 'yes' || $input['twitter_send'] == NULL ) {
+			$options['twitter_send'] = $input['twitter_send'];
+		}
+		
+		// Check the Twitter syntax
+		$options['twitter_publish_syntax'] = $input['twitter_publish_syntax'];
+		
+		// Check the number of additional tweets
+		if ( 0 <= $input['twitter_post_number'] && $input['twitter_post_number'] <= 10 ) {
+			$options['twitter_post_number'] = $input['twitter_post_number'];
+		}
+		else {
+			add_settings_error (
+				self::ID, // Setting to which the error applies
+				'twitter-post-number', // Identify the option throwing the error
+				'You provided an invalid value for the number of additional tweets to send.', // Error message
+				'error' // The type of message it is
+			);
+		}
+		
+		// Check the interval between tweets
+		if ( 1 <= $input['twitter_post_interval'] && $input['twitter_post_interval'] <= 24 ) {
+			$options['twitter_post_interval'] = $input['twitter_post_interval'];
+		}
+		else {
+			add_settings_error (
+				self::ID, // Setting to which the error applies
+				'twitter-post-interval', // Identify the option throwing the error
+				'You provided an invalid value for the interval between tweets.', // Error message
+				'error' // The type of message it is
+			);
+		}
+		/* End Twitter options */
+		
+		/* Facebook options */
+		// Check the value for enabling Facebook
+		if ( $input['fb_send'] == 'yes' || $input['fb_send'] == NULL ) {
+			$options['fb_send'] = $input['fb_send'];
+		}
+		
+		// Check the Facebook syntax
+		$options['fb_publish_syntax'] = $input['fb_publish_syntax'];
+		/* End Facebook options */
+		
+		/* LinkedIn options */
+		// Check the value for enabling LinkedIn
+		if ( $input['linkedin_send'] == 'yes' || $input['linkedin_send'] == NULL ) {
+			$options['linkedin_send'] = $input['linkedin_send'];
+		}
+		
+		// Check the Facebook syntax
+		$options['linkedin_publish_syntax'] = $input['linkedin_publish_syntax'];
+		/* End LinkedIn options */
+		
+		// Save Twitter schedule directly
+		$options['twitter_post_number'] = $input['twitter_post_number'];
+		$options['twitter_post_interval'] = $input['twitter_post_interval'];
 		
 		return $options;
 	} // End options_validate()
@@ -358,13 +450,12 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	 		'access_token' => NULL, // Access token, for the Buffer account used to publish posts globally
 	 		'twitter_send' => NULL, // Don't enable Twitter by default
 	 		'twitter_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Twitter messages
-	 		'twitter_schedule' => NULL, // Default schedule for Twitter
+	 		'twitter_post_number' => 0, // Number of tweets to schedule
+	 		'twitter_post_interval' => 1, // Interval between scheduled tweets
 	 		'fb_send' => NULL, // Don't enable Facebook by default
 	 		'fb_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Facebook messages
-	 		'fb_schedule' => NULL, // Default schedule for Facebook
 	 		'linkedin_send' => NULL, // Don't enable LinkedIn by default
 	 		'linkedin_publish_syntax' => 'New Post: {title} {url}', // Default syntax of LinkedIn messages
-	 		'linkedin_schedule' => NULL, // Default schedule for Facebook
 	 	);
 	 	
 	 	// Add options to database
