@@ -214,7 +214,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
 		if ( ! $this->options['client_id'] || ! $this->options['client_secret'] ) {
-			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Once Client ID and Client Secret are set, the rest of the plugin options will be available.</p>';
+			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Don\'t worry, I\'ll walk you through it. Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Application callback URL</strong>: NEEDS TO BE SET</p>';
 		}
 		// If they have been saved, check whether there's an access token and display the appropriate message
 		else {
@@ -286,7 +286,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			$checked = 'checked';
 		}
 		else {
-			$checked = NULL;
+			$checked = null;
 		}
 		echo '<input type="checkbox" name ="' . $this->prefix . 'options[twitter_send]" id="' . $this->prefix . 'options[twitter_send]" value="yes" ' . $checked . '>';
 	} // End twitter_send_callback()
@@ -317,7 +317,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			$checked = 'checked';
 		}
 		else {
-			$checked = NULL;
+			$checked = null;
 		}
 		echo '<input type="checkbox" name ="' . $this->prefix . 'options[fb_send]" id="' . $this->prefix . 'options[fb_send]" value="yes" ' . $checked . '>';
 	} // End fb_send_callback()
@@ -335,7 +335,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			$checked = 'checked';
 		}
 		else {
-			$checked = NULL;
+			$checked = null;
 		}
 		echo '<input type="checkbox" name ="' . $this->prefix . 'options[linkedin_send]" id="' . $this->prefix . 'options[linkedin_send]" value="yes" ' . $checked . '>';
 	} // End linkedin_send_callback()
@@ -374,7 +374,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		if ( $this->options['client_id'] && $this->options['client_secret'] && $this->options['access_token'] ) {
 			/* Twitter options */
 			// Check the value for enabling Twitter
-			if ( $input['twitter_send'] == 'yes' || $input['twitter_send'] == NULL ) {
+			if ( $input['twitter_send'] == 'yes' || $input['twitter_send'] == null ) {
 				$options['twitter_send'] = $input['twitter_send'];
 			}
 			
@@ -424,15 +424,15 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 					);
 				}
 			}
-			// If twitter_post_number is set to 0, set this option to NULL
+			// If twitter_post_number is set to 0, set this option to null
 			else {
-				$options['twitter_post_interval'] = NULL;
+				$options['twitter_post_interval'] = null;
 			}
 			/* End Twitter options */
 			
 			/* Facebook options */
 			// Check the value for enabling Facebook
-			if ( $input['fb_send'] == 'yes' || $input['fb_send'] == NULL ) {
+			if ( $input['fb_send'] == 'yes' || $input['fb_send'] == null ) {
 				$options['fb_send'] = $input['fb_send'];
 			}
 			
@@ -457,7 +457,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			
 			/* LinkedIn options */
 			// Check the value for enabling LinkedIn
-			if ( $input['linkedin_send'] == 'yes' || $input['linkedin_send'] == NULL ) {
+			if ( $input['linkedin_send'] == 'yes' || $input['linkedin_send'] == null ) {
 				$options['linkedin_send'] = $input['linkedin_send'];
 			}
 			
@@ -511,16 +511,16 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	 	
 	 	// Default plugin options
 	 	$options = array(
-	 		'client_id' => NULL, // Application client ID
-	 		'client_secret' => NULL, // Application client secret
-	 		'access_token' => NULL, // Access token, for the Buffer account used to publish posts globally
-	 		'twitter_send' => NULL, // Don't enable Twitter by default
+	 		'client_id' => null, // Application client ID
+	 		'client_secret' => null, // Application client secret
+	 		'access_token' => null, // Access token, for the Buffer account used to publish posts globally
+	 		'twitter_send' => null, // Don't enable Twitter by default
 	 		'twitter_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Twitter messages
 	 		'twitter_post_number' => 0, // Number of tweets to schedule
-	 		'twitter_post_interval' => NULL, // Interval between scheduled tweets
-	 		'fb_send' => NULL, // Don't enable Facebook by default
+	 		'twitter_post_interval' => null, // Interval between scheduled tweets
+	 		'fb_send' => null, // Don't enable Facebook by default
 	 		'fb_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Facebook messages
-	 		'linkedin_send' => NULL, // Don't enable LinkedIn by default
+	 		'linkedin_send' => null, // Don't enable LinkedIn by default
 	 		'linkedin_publish_syntax' => 'New Post: {title} {url}', // Default syntax of LinkedIn messages
 	 	);
 	 	
