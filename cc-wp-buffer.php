@@ -47,7 +47,7 @@ class Buffer {
 		/* End admin elements */
 		
 		// Load the Buffer API class
-		require_once( $this->pluginpath . '/includes/' . self::ID . 'api.php' );
+		require_once( $this->pluginpath . '/includes/' . self::ID . '-api.php' );
 	} // End __construct()
 	
 	// Initialize the plugin
