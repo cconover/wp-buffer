@@ -148,7 +148,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		// Enable Twitter
 		add_settings_field(
 			'twitter_send', // Field ID
-			'Enable Twitter', // Field title/label, displayed to the user
+			'Send Posts to Twitter', // Field title/label, displayed to the user
 			array( &$this, 'twitter_send_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
 			'twitter' // Settings section in which to display the field
@@ -175,7 +175,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		// Enable Facebook
 		add_settings_field(
 			'fb_send', // Field ID
-			'Enable Facebook', // Field title/label, displayed to the user
+			'Send Posts to Facebook', // Field title/label, displayed to the user
 			array( &$this, 'fb_send_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
 			'fb' // Settings section in which to display the field
@@ -202,7 +202,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		// Enable LinkedIn
 		add_settings_field(
 			'twitter_send', // Field ID
-			'Enable LinkedIn', // Field title/label, displayed to the user
+			'Send Posts to LinkedIn', // Field title/label, displayed to the user
 			array( &$this, 'linkedin_send_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
 			'linkedin' // Settings section in which to display the field
@@ -282,6 +282,46 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	function twitter_send_callback() {
 		
 	} // End twitter_send_callback()
+	
+	// Twitter syntax
+	function twitter_publish_syntax_callback() {
+		
+	} // End twitter_publish_syntax_callback()
+	
+	// Twitter schedule
+	function twitter_schedule_callback() {
+		
+	} // End twitter_schedule_callback()
+	
+	// Enable Facebook
+	function fb_send_callback() {
+		
+	} // End fb_send_callback()
+	
+	// Facebook syntax
+	function fb_publish_syntax_callback() {
+		
+	} // End fb_publish_syntax_callback()
+	
+	// Facebook schedule
+	function fb_schedule_callback() {
+		
+	} // End fb_schedule_callback()
+	
+	// Enable LinkedIn
+	function linkedin_send_callback() {
+		
+	} // End linkedin_send_callback()
+	
+	// LinkedIn syntax
+	function linkedin_publish_syntax_callback() {
+		
+	} // End linkedin_publish_syntax_callback()
+	
+	// LinkedIn schedule
+	function linkedin_schedule_callback() {
+		
+	} // End linkedin_schedule_callback()
 	/* End plugin options callbacks */
 	
 	// Validate plugin options
