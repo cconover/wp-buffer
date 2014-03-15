@@ -4,11 +4,13 @@
  * admin/cc-wp-buffer-admin.php
  **/
 
+namespace cconover\buffer;
+
 /**
  * Admin plugin class
  * Extends main plugin class
  **/
-class cc_wp_buffer_admin extends cc_wp_buffer {
+class Admin extends Buffer {
 	// Class constructor
 	function __construct() {
 		// Initialize
@@ -106,14 +108,16 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			'auth' // Settings section in which to display the field
 		);
 		
-		// Buffer access token to be used globally for the site
-		add_settings_field(
-			'access_token', // Field ID
-			'Buffer Account', // Field title/label, displayed to the user
-			array( &$this, 'access_token_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'auth' // Settings section in which to display the field
-		);
+		// Buffer access token to be used globally for the site (only show if Client ID and Client Secret are saved)
+		if ( $this->options['client_id'] && $this->options['client_secret'] ) {
+			add_settings_field(
+				'access_token', // Field ID
+				'Buffer Account', // Field title/label, displayed to the user
+				array( &$this, 'access_token_callback' ), // Callback method to display the option field
+				self::ID, // Page ID for the options page
+				'auth' // Settings section in which to display the field
+			);
+		}
 	} // End auth_options()
 	
 	// Set up options page sections

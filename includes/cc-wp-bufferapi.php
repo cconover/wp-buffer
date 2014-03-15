@@ -4,7 +4,9 @@
  * Handles all API calls for the plugin
  **/
 
-class cc_wp_bufferapi extends cc_wp_buffer {
+namespace cconover\buffer;
+
+class Api extends Buffer {
 	// Class constructor
 	function __construct() {
 		// Initialize

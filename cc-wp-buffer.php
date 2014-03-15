@@ -10,10 +10,12 @@
  * @package cc-wp-buffer
  **/
 
+namespace cconover\buffer;
+
 /**
  * Main plugin class
  **/
-class cc_wp_buffer {
+class Buffer {
 	/* Plugin constants */
 	const ID = 'cc-wp-buffer'; // Plugin ID
 	const NAME = 'Buffer for WordPress'; // Plugin name
@@ -36,7 +38,7 @@ class cc_wp_buffer {
 		/* Admin elements (only loaded if in admin) */
 		if ( is_admin() ) {
 			require_once( $this->pluginpath . '/admin/' . self::ID . '-admin.php' ); // Require the file containing the plugin admin class
-			$admin = new cc_wp_buffer_admin; // Create new admin object
+			$admin = new \cconover\buffer\Admin; // Create new admin object
 			
 			// Admin hooks and filters to be loaded by the main plugin class
 			register_activation_hook( $this->pluginfile, array( &$admin, 'activate' ) ); // Plugin activation
@@ -72,5 +74,5 @@ class cc_wp_buffer {
 
 // Create plugin object in the global space
 global $cc_wp_buffer;
-$cc_wp_buffer = new cc_wp_buffer;
+$cc_wp_buffer = new \cconover\buffer\Buffer;
 ?>
