@@ -112,7 +112,7 @@ class Admin extends Buffer {
 		if ( $this->options['client_id'] && $this->options['client_secret'] ) {
 			add_settings_field(
 				'access_token', // Field ID
-				'Buffer Account', // Field title/label, displayed to the user
+				'Access Token', // Field title/label, displayed to the user
 				array( &$this, 'access_token_callback' ), // Callback method to display the option field
 				self::ID, // Page ID for the options page
 				'auth' // Settings section in which to display the field
@@ -218,7 +218,7 @@ class Admin extends Buffer {
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
 		if ( ! $this->options['client_id'] || ! $this->options['client_secret'] ) {
-			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Don\'t worry, I\'ll walk you through it. Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Application callback URL</strong>: NEEDS TO BE SET</p>';
+			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Don\'t worry, I\'ll walk you through it. Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p>';
 		}
 		// If they have been saved, check whether there's an access token and display the appropriate message
 		else {
@@ -226,7 +226,7 @@ class Admin extends Buffer {
 				echo '<p style="color: #199E22;">This site is fully authenticated with Buffer. Have fun!</p>';
 			}
 			else {
-				echo '<p style="color: #F08C00;">You\'re almost done! Authorize your site to access your Buffer account, and you\'ll be good to go!</p>';
+				echo '<p style="color: #F08C00;">You\'re almost done! Copy the access token for the <a href="https://bufferapp.com/developers/apps" target="_blank">application you just registered</a> and paste it in the Access Token field.</p>';
 			}
 		}
 	} // End auth_callback()
@@ -266,21 +266,8 @@ class Admin extends Buffer {
 	
 	// Access token
 	function access_token_callback() {
-		// If either Client ID or Client Secret are missing, display a message
-		if ( ! $this->options['client_id'] || ! $this->options['client_secret'] ) {
-			echo '<p>You need to save the Client ID and Client Secret before you can authorize this site with your Buffer account.</p>';
-		}
-		// If Client ID and Client Secret are both present, continue on
-		else {
-			// If no access token is saved in the database, show the button for the user to authorize this site with their Buffer account
-			if ( ! $this->options['access_token'] ) {
-				echo '<a class="button button-primary" href="#">Authorize with Buffer</a>';
-			}
-			// If we do have an access token, show a button for them to disconnect this site from their Buffer account
-			else {
-				echo '<a class="button" href="#">Disconnect from Buffer</a>';
-			}
-		}
+		// Show text input to provide access token
+		echo '<input type="text" name="' . $this->prefix . 'options[access_token]" id="' . $this->prefix . 'options[access_token]" value="' . $this->options['access_token'] . '" size=40>';
 	} // End client_id_callback()
 	
 	// Enable Twitter
@@ -369,6 +356,24 @@ class Admin extends Buffer {
 					self::ID, // Setting to which the error applies
 					'client-auth', // Identify the option throwing the error
 					'The Client ID and/or Client Secret is in an invalid format. Please try again.', // Error message
+					'error' // The type of message it is
+				);
+			}
+		}
+		
+		// Access token will only be saved if Client ID and Client Secret are both already saved
+		if ( $this->options['client_id'] && $this->options['client_secret'] ) {
+			// Make sure a value is provided for the access token
+			if ( $input['access_token'] ) {
+				// Save the access token
+				$options['access_token'] = $input['access_token'];
+			}
+			// If nothing is provided for the access token, throw an error
+			else {
+				add_settings_error (
+					self::ID, // Setting to which the error applies
+					'access-token', // Identify the option throwing the error
+					'The Buffer access token you provided is invalid.', // Error message
 					'error' // The type of message it is
 				);
 			}
