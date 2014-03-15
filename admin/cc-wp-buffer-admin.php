@@ -71,7 +71,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		$this->auth_options();
 		
 		// If client ID & secret are saved, load the rest of the options
-		if ( isset( $this->options['client_id'] ) && isset( $this->options['client_secret'] ) ) {
+		if ( $this->options['client_id'] && $this->options['client_secret'] ) {
 			// Options page sections and fields
 			$this->set_options_sections();
 			$this->set_options_fields();
@@ -109,27 +109,27 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	
 	// Set up options page sections
 	function set_options_sections() {		
-		// Default post settings
+		// Twitter settings
 		add_settings_section(
-			'posts', // Name of the section
-			'Posts', // Title of the section, displayed on the options page
-			array( &$this, 'posts_callback' ), // Callback method to display plugin options
+			'twitter', // Name of the section
+			'Twitter', // Title of the section, displayed on the options page
+			array( &$this, 'twitter_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
 		
-		// Default page settings
+		// Facebook settings
 		add_settings_section(
-			'pages', // Name of the section
-			'Pages', // Title of the section, displayed on the options page
-			array( &$this, 'pages_callback' ), // Callback method to display plugin options
+			'fb', // Name of the section
+			'Facebook', // Title of the section, displayed on the options page
+			array( &$this, 'fb_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
 		
-		// Default scheduling settings
+		// LinkedIn settings
 		add_settings_section(
-			'schedule', // Name of the section
-			'Schedule', // Title of the section, displayed on the options page
-			array( &$this, 'schedule_callback' ), // Callback method to display plugin options
+			'linkedin', // Name of the section
+			'LinkedIn', // Title of the section, displayed on the options page
+			array( &$this, 'linkedin_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
 	} // End set_options_sections()
@@ -145,49 +145,85 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			'auth' // Settings section in which to display the field
 		);
 		
-		// Syntax of Buffer message for publishing posts
+		// Enable Twitter
 		add_settings_field(
-			'post_publish_syntax', // Field ID
-			'Publish Post', // Field title/label, displayed to the user
-			array( &$this, 'post_publish_syntax_callback' ), // Callback method to display the option field
+			'twitter_send', // Field ID
+			'Enable Twitter', // Field title/label, displayed to the user
+			array( &$this, 'twitter_send_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
-			'posts' // Settings section in which to display the field
+			'twitter' // Settings section in which to display the field
 		);
 		
-		// Social media networks to which Buffer should send posts
+		// Default syntax for Twitter messages
 		add_settings_field(
-			'post_networks', // Field ID
-			'Social Media', // Field title/label, displayed to the user
-			array( &$this, 'post_networks_callback' ), // Callback method to display the option field
+			'twitter_publish_syntax', // Field ID
+			'Tweet Format', // Field title/label, displayed to the user
+			array( &$this, 'twitter_publish_syntax_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
-			'posts' // Settings section in which to display the field
+			'twitter' // Settings section in which to display the field
 		);
 		
-		// Syntax of Buffer message for publishing pages
+		// Schedule for Twitter messsages
 		add_settings_field(
-			'page_publish_syntax', // Field ID
-			'Publish Page', // Field title/label, displayed to the user
-			array( &$this, 'page_publish_syntax_callback' ), // Callback method to display the option field
+			'twitter_schedule', // Field ID
+			'Schedule for Tweets', // Field title/label, displayed to the user
+			array( &$this, 'twitter_schedule_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
-			'pages' // Settings section in which to display the field
+			'twitter' // Settings section in which to display the field
 		);
 		
-		// Social media networks to which Buffer should send pages
+		// Enable Facebook
 		add_settings_field(
-			'page_networks', // Field ID
-			'Social Media', // Field title/label, displayed to the user
-			array( &$this, 'page_networks_callback' ), // Callback method to display the option field
+			'fb_send', // Field ID
+			'Enable Facebook', // Field title/label, displayed to the user
+			array( &$this, 'fb_send_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
-			'pages' // Settings section in which to display the field
+			'fb' // Settings section in which to display the field
 		);
 		
-		// Publishing schedule
+		// Default syntax for Facebook messages
 		add_settings_field(
-			'schedule', // Field ID
-			'Buffer Schedule', // Field title/label, displayed to the user
-			array( &$this, 'schedule_option_callback' ), // Callback method to display the option field
+			'fb_publish_syntax', // Field ID
+			'Facebook Post Format', // Field title/label, displayed to the user
+			array( &$this, 'fb_publish_syntax_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
-			'schedule' // Settings section in which to display the field
+			'fb' // Settings section in which to display the field
+		);
+		
+		// Schedule for Facebook messages
+		add_settings_field(
+			'fb_schedule', // Field ID
+			'Schedule for Facebook Posts', // Field title/label, displayed to the user
+			array( &$this, 'fb_schedule_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'fb' // Settings section in which to display the field
+		);
+		
+		// Enable LinkedIn
+		add_settings_field(
+			'twitter_send', // Field ID
+			'Enable LinkedIn', // Field title/label, displayed to the user
+			array( &$this, 'linkedin_send_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'linkedin' // Settings section in which to display the field
+		);
+		
+		// Default syntax for LinkedIn messages
+		add_settings_field(
+			'linkedin_publish_syntax', // Field ID
+			'LinkedIn Post Format', // Field title/label, displayed to the user
+			array( &$this, 'linkedin_publish_syntax_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'linkedin' // Settings section in which to display the field
+		);
+		
+		// Schedule for LinkedIn
+		add_settings_field(
+			'linkedin_schedule', // Field ID
+			'Schedule for LinkedIn Posts', // Field title/label, displayed to the user
+			array( &$this, 'linkedin_schedule_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'linkedin' // Settings section in which to display the field
 		);
 	} // End set_options_fields()
 	
@@ -195,53 +231,71 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	// Authorization section
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
-		if ( ! isset( $this->options['client_id'] ) || ! isset( $this->options['client_secret'] ) ) {
-			echo '<p>In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create">register it as a Buffer application</a>.</p><p>Once Client ID and Client Secret are set, the rest of the plugin options will be available.</p>';
+		if ( ! $this->options['client_id'] || ! $this->options['client_secret'] ) {
+			echo '<p style="color: #E30000;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a>.</p><p>Once Client ID and Client Secret are set, the rest of the plugin options will be available.</p>';
 		}
 		// If they have been saved, display this one instead
 		else {
-			
+			echo '<p style="color: #199E22;">This site has been set up with valid Buffer app credentials! Have fun!';
 		}
 	} // End auth_callback()
 	
-	// Posts section
-	function posts_callback() {
-		echo '<p>Please specify the way Buffer should handle posts you publish on this site.</p>';
-	} // End posts_callback()
+	// Twitter section
+	function twitter_callback() {
+		echo '<p>Please set up your options for sending to Twitter.';
+	} // End twitter_callback()
 	
-	// Pages section
-	function pages_callback() {
-		echo '<p>Please specify the way Buffer should handle pages you publish on this site.</p>';
-	} // End pages_callback()
+	// Facebook section
+	function fb_callback() {
+		echo '<p>Please set up your options for sending to Facebook.';
+	} // End fb_callback()
 	
-	// Schedule section
-	function schedule_callback() {
-		echo '<p>Please set the posting interval Buffer should use when you publish a new post or page.</p>';
-	} // End schedule_callback()
+	// LinkedIn section
+	function linkedin_callback() {
+		echo '<p>Please set up your options for sending to LinkedIn.';
+	} // End linkedin_callback()
 	
 	// Client ID
 	function client_id_callback() {
 		?>
-		<input name="<?php echo $this->prefix; ?>client_id" id="<?php echo $this->prefix; ?>client_id" value="<?php echo $this->options['client_id']; ?>" size=40>
+		<input type="text" name="<?php echo $this->prefix; ?>options[client_id]" id="<?php echo $this->prefix; ?>options[client_id]" value="<?php echo $this->options['client_id']; ?>" size=40>
 		<?php
 	} // End client_id_callback()
 	
 	// Client secret
 	function client_secret_callback() {
-		?>
-		<input name="<?php echo $this->prefix; ?>client_secret" id="<?php echo $this->prefix; ?>client_secret" value="<?php echo $this->options['client_id']; ?>" size=40>
-		<?php
+		// If client secret is saved in the database, the field is type 'password'. If not, it's type 'text'.
+		if ( $this->options['client_secret'] ) {
+			echo '<input type="password" name="' . $this->prefix . 'options[client_secret]" id="' . $this->prefix . 'options[client_secret]" value="' . $this->options['client_secret'] . '" size=40>';
+		}
+		else {
+			echo '<input type="text" name="' . $this->prefix . 'options[client_secret]" id="' . $this->prefix . 'options[client_secret]" value="' . $this->options['client_secret'] . '" size=40>';
+		}
 	} // End client_id_callback()
 	
 	// Access token
 	function access_token_callback() {
 		
 	} // End client_id_callback()
+	
+	// Enable Twitter
+	function twitter_send_callback() {
+		
+	} // End twitter_send_callback()
 	/* End plugin options callbacks */
 	
 	// Validate plugin options
-	function options_validate() {
+	function options_validate( $input ) {
+		// Set a local variable for the existing plugin options. This is so we don't mix up data.
+		$options = $this->options;
 		
+		// If client ID and client secret have been changed from what's in the database, validate them
+		if ( ( $input['client_id'] != $this->options['client_id'] ) || ( $input['client_secret'] != $this->options['client_secret'] ) ) {
+			$options['client_id'] = $input['client_id']; // Application client ID
+			$options['client_secret'] = $input['client_secret']; // Application client secret
+		}
+		
+		return $options;
 	} // End options_validate()
 	/*
 	===== End Admin Plugin Options =====
@@ -262,13 +316,15 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	 		'client_id' => NULL, // Application client ID
 	 		'client_secret' => NULL, // Application client secret
 	 		'access_token' => NULL, // Access token, for the Buffer account used to publish posts globally
-	 		'post_publish_syntax' => 'New Post: {title} {url}', // Syntax of Buffer message when a post is published
-	 		'post_update_synxat' => 'Updated Post: {title} {url}', // Syntax of Buffer message when a post is updated
-	 		'post_networks' => NULL, // Social networks Buffer should push to when a post is published/updated
-	 		'page_publish_syntax' => 'New Page: {title} {url}', // Syntax of Buffer message when a post is published
-	 		'page_update_synxat' => 'Updated Page: {title} {url}', // Syntax of Buffer message when a post is updated
-	 		'page_networks' => NULL, // Social networks Buffer should push to when a post is published/updated
-	 		'schedule' => NULL // Default Buffer push schedule
+	 		'twitter_send' => NULL, // Don't enable Twitter by default
+	 		'twitter_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Twitter messages
+	 		'twitter_schedule' => NULL, // Default schedule for Twitter
+	 		'fb_send' => NULL, // Don't enable Facebook by default
+	 		'fb_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Facebook messages
+	 		'fb_schedule' => NULL, // Default schedule for Facebook
+	 		'linkedin_send' => NULL, // Don't enable LinkedIn by default
+	 		'linkedin_publish_syntax' => 'New Post: {title} {url}', // Default syntax of LinkedIn messages
+	 		'linkedin_schedule' => NULL, // Default schedule for Facebook
 	 	);
 	 	
 	 	// Add options to database
