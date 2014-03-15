@@ -70,8 +70,8 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		// Load plugin options for authorization
 		$this->auth_options();
 		
-		// If client ID & secret are saved, load the rest of the options
-		if ( $this->options['client_id'] && $this->options['client_secret'] ) {
+		// If the application has been fully authenticated with Buffer, load the rest of the options
+		if ( $this->options['client_id'] && $this->options['client_secret'] && $this->options['access_token'] ) {
 			// Options page sections and fields
 			$this->set_options_sections();
 			$this->set_options_fields();
@@ -102,6 +102,15 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 			'client_secret', // Field ID
 			'Client secret', // Field title/label, displayed to the user
 			array( &$this, 'client_secret_callback' ), // Callback method to display the option field
+			self::ID, // Page ID for the options page
+			'auth' // Settings section in which to display the field
+		);
+		
+		// Buffer access token to be used globally for the site
+		add_settings_field(
+			'access_token', // Field ID
+			'Buffer Account', // Field title/label, displayed to the user
+			array( &$this, 'access_token_callback' ), // Callback method to display the option field
 			self::ID, // Page ID for the options page
 			'auth' // Settings section in which to display the field
 		);
@@ -136,15 +145,6 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	
 	// Set up options fields
 	function set_options_fields() {
-		// Buffer access token for account used globally on the WordPress site
-		add_settings_field(
-			'access_token', // Field ID
-			NULL, // Field title/label, displayed to the user
-			array( &$this, 'access_token_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'auth' // Settings section in which to display the field
-		);
-		
 		// Enable Twitter
 		add_settings_field(
 			'twitter_send', // Field ID
@@ -216,9 +216,14 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		if ( ! $this->options['client_id'] || ! $this->options['client_secret'] ) {
 			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Once Client ID and Client Secret are set, the rest of the plugin options will be available.</p>';
 		}
-		// If they have been saved, display this one instead
+		// If they have been saved, check whether there's an access token and display the appropriate message
 		else {
-			echo '<p style="color: #199E22;">This site has a valid Buffer client ID and client secret. Have fun!</p>';
+			if ( $this->options['access_token'] ) {
+				echo '<p style="color: #199E22;">This site is fully authenticated with Buffer. Have fun!</p>';
+			}
+			else {
+				echo '<p style="color: #F08C00;">You\'re almost done! Authorize your site to access your Buffer account, and you\'ll be good to go!</p>';
+			}
 		}
 	} // End auth_callback()
 	
@@ -257,7 +262,21 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	
 	// Access token
 	function access_token_callback() {
-		
+		// If either Client ID or Client Secret are missing, display a message
+		if ( ! $this->options['client_id'] || ! $this->options['client_secret'] ) {
+			echo '<p>You need to save the Client ID and Client Secret before you can authorize this site with your Buffer account.</p>';
+		}
+		// If Client ID and Client Secret are both present, continue on
+		else {
+			// If no access token is saved in the database, show the button for the user to authorize this site with their Buffer account
+			if ( ! $this->options['access_token'] ) {
+				echo '<a class="button button-primary" href="#">Authorize with Buffer</a>';
+			}
+			// If we do have an access token, show a button for them to disconnect this site from their Buffer account
+			else {
+				echo '<a class="button" href="#">Disconnect from Buffer</a>';
+			}
+		}
 	} // End client_id_callback()
 	
 	// Enable Twitter
@@ -281,38 +300,10 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	// Twitter schedule
 	function twitter_schedule_callback() {
 		// Set up input field for number of additional tweets to send
-		$numposts = '<select name="' . $this->prefix . 'options[twitter_post_number]" required>';
-		// Use loop to create options for select menu
-		for ( $i = 0; $i <= 10; $i++ ) {
-			// If the option value is the one saved in the database, mark it as selected
-			if ( $i == $this->options['twitter_post_number'] ) {
-				$selected = 'selected';
-			}
-			else {
-				$selected = NULL;
-			}
-			
-			$numposts .= '<option value=' . $i . ' ' . $selected . '>' . $i . '</option>';
-		}
-		// Close the select menu
-		$numposts .= '</select>';
+		$numposts = '<input type="text" name="' . $this->prefix . 'options[twitter_post_number]" id="' . $this->prefix . 'options[twitter_post_number]" value="' . $this->options['twitter_post_number'] . '" size=1>';
 		
 		// Set up input field for interval (in hours) between tweets
-		$interval = '<select name="' . $this->prefix . 'options[twitter_post_interval]" required>';
-		// Use loop to create options for select menu
-		for ( $i = 1; $i <= 24; $i++ ) {
-			// If the option value is the one saved in the database, mark it as selected
-			if ( $i == $this->options['twitter_post_interval'] ) {
-				$selected = 'selected';
-			}
-			else {
-				$selected = NULL;
-			}
-			
-			$interval .= '<option value=' . $i . ' ' . $selected . '>' . $i . '</option>';
-		}
-		// Close the select menu
-		$interval .= '</select>';
+		$interval = '<input type="text" name="' . $this->prefix . 'options[twitter_post_interval]" id="' . $this->prefix . 'options[twitter_post_interval]" value="' . $this->options['twitter_post_interval'] . '" size=1>';
 		
 		// Show the options fields with explanation
 		echo '<p>Send ' . $numposts . ' additional tweets, spaced ' . $interval . ' hours apart</p>';
@@ -363,72 +354,147 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 		
 		// If client ID and client secret have been changed from what's in the database, validate them
 		if ( ( $input['client_id'] != $this->options['client_id'] ) || ( $input['client_secret'] != $this->options['client_secret'] ) ) {
-			$options['client_id'] = $input['client_id']; // Application client ID
-			$options['client_secret'] = $input['client_secret']; // Application client secret
+			// Check to make sure whether the provided values are hexadecimal
+			if ( ctype_xdigit( $input['client_id'] ) && ctype_xdigit( $input['client_secret'] ) ) {
+				$options['client_id'] = $input['client_id']; // Application client ID
+				$options['client_secret'] = $input['client_secret']; // Application client secret
+			}
+			// If one of them is not hexadecimal, throw an error
+			else {
+				add_settings_error (
+					self::ID, // Setting to which the error applies
+					'client-auth', // Identify the option throwing the error
+					'The Client ID and/or Client Secret is in an invalid format. Please try again.', // Error message
+					'error' // The type of message it is
+				);
+			}
 		}
 		
-		/* Twitter options */
-		// Check the value for enabling Twitter
-		if ( $input['twitter_send'] == 'yes' || $input['twitter_send'] == NULL ) {
-			$options['twitter_send'] = $input['twitter_send'];
+		// All other options require application to be fully authenticated, and no validation or assigment will be done without that
+		if ( $this->options['client_id'] && $this->options['client_secret'] && $this->options['access_token'] ) {
+			/* Twitter options */
+			// Check the value for enabling Twitter
+			if ( $input['twitter_send'] == 'yes' || $input['twitter_send'] == NULL ) {
+				$options['twitter_send'] = $input['twitter_send'];
+			}
+			
+			// Check the Twitter syntax
+			// Verify that Twitter is enabled, otherwise we'll ignore the syntax field
+			if ( $input['twitter_send'] == 'yes' ) {
+				if ( $this->validate_syntax( $input['twitter_publish_syntax'] ) ) {
+					// If the syntax provided is valid, use it
+					$options['twitter_publish_syntax'] = $input['twitter_publish_syntax'];
+				}
+				// If not, throw an error
+				else {
+					add_settings_error (
+						self::ID, // Setting to which the error applies
+						'twitter-publish-syntax', // Identify the option throwing the error
+						'The tweet format you provided for Twitter is invalid.', // Error message
+						'error' // The type of message it is
+					);
+				}
+			}
+			
+			// Check the number of additional tweets
+			if ( is_numeric( $input['twitter_post_number'] ) && 0 <= $input['twitter_post_number'] ) {
+				$options['twitter_post_number'] = $input['twitter_post_number'];
+			}
+			else {
+				add_settings_error (
+					self::ID, // Setting to which the error applies
+					'twitter-post-number', // Identify the option throwing the error
+					'You provided an invalid value for the number of additional tweets to send. You must provide a number greater than or equal to 0.', // Error message
+					'error' // The type of message it is
+				);
+			}
+			
+			// Check the interval between tweets
+			// Only require this field if twitter_post_number is greater than 0
+			if ( $input['twitter_post_number'] && ( is_numeric( $input['twitter_post_number'] ) && $input['twitter_post_number'] > 0 ) ) {
+				if ( $input['twitter_post_interval'] && ( is_numeric( $input['twitter_post_interval'] ) && 1 <= $input['twitter_post_interval'] ) ) {
+					$options['twitter_post_interval'] = $input['twitter_post_interval'];
+				}
+				else {
+					add_settings_error (
+						self::ID, // Setting to which the error applies
+						'twitter-post-interval', // Identify the option throwing the error
+						'You provided an invalid value for the interval between tweets. You must provide a number greater than 0.', // Error message
+						'error' // The type of message it is
+					);
+				}
+			}
+			// If twitter_post_number is set to 0, set this option to NULL
+			else {
+				$options['twitter_post_interval'] = NULL;
+			}
+			/* End Twitter options */
+			
+			/* Facebook options */
+			// Check the value for enabling Facebook
+			if ( $input['fb_send'] == 'yes' || $input['fb_send'] == NULL ) {
+				$options['fb_send'] = $input['fb_send'];
+			}
+			
+			// Check the Facebook syntax
+			// Verify that Facebook is enabled, otherwise we'll ignore the syntax field
+			if ( $input['fb_send'] == 'yes' ) {
+				if ( $this->validate_syntax( $input['fb_publish_syntax'] ) ) {
+					// If the syntax provided is valid, use it
+					$options['fb_publish_syntax'] = $input['fb_publish_syntax'];
+				}
+				// If not, throw an error
+				else {
+					add_settings_error (
+						self::ID, // Setting to which the error applies
+						'fb-publish-syntax', // Identify the option throwing the error
+						'The post format you provided for Facebook is invalid.', // Error message
+						'error' // The type of message it is
+					);
+				}
+			}
+			/* End Facebook options */
+			
+			/* LinkedIn options */
+			// Check the value for enabling LinkedIn
+			if ( $input['linkedin_send'] == 'yes' || $input['linkedin_send'] == NULL ) {
+				$options['linkedin_send'] = $input['linkedin_send'];
+			}
+			
+			// Check the LinkedIn syntax
+			// Verify that LinkedIn is enabled, otherwise we'll ignore the syntax field
+			if ( $input['linkedin_send'] == 'yes' ) {
+				if ( $this->validate_syntax( $input['linkedin_publish_syntax'] ) ) {
+					// If the syntax provided is valid, use it
+					$options['linkedin_publish_syntax'] = $input['linkedin_publish_syntax'];
+				}
+				// If not, throw an error
+				else {
+					add_settings_error (
+						self::ID, // Setting to which the error applies
+						'linkedin-publish-syntax', // Identify the option throwing the error
+						'The post format you provided for LinkedIn is invalid.', // Error message
+						'error' // The type of message it is
+					);
+				}
+			}
+			/* End LinkedIn options */
 		}
-		
-		// Check the Twitter syntax
-		$options['twitter_publish_syntax'] = $input['twitter_publish_syntax'];
-		
-		// Check the number of additional tweets
-		if ( 0 <= $input['twitter_post_number'] && $input['twitter_post_number'] <= 10 ) {
-			$options['twitter_post_number'] = $input['twitter_post_number'];
-		}
-		else {
-			add_settings_error (
-				self::ID, // Setting to which the error applies
-				'twitter-post-number', // Identify the option throwing the error
-				'You provided an invalid value for the number of additional tweets to send.', // Error message
-				'error' // The type of message it is
-			);
-		}
-		
-		// Check the interval between tweets
-		if ( 1 <= $input['twitter_post_interval'] && $input['twitter_post_interval'] <= 24 ) {
-			$options['twitter_post_interval'] = $input['twitter_post_interval'];
-		}
-		else {
-			add_settings_error (
-				self::ID, // Setting to which the error applies
-				'twitter-post-interval', // Identify the option throwing the error
-				'You provided an invalid value for the interval between tweets.', // Error message
-				'error' // The type of message it is
-			);
-		}
-		/* End Twitter options */
-		
-		/* Facebook options */
-		// Check the value for enabling Facebook
-		if ( $input['fb_send'] == 'yes' || $input['fb_send'] == NULL ) {
-			$options['fb_send'] = $input['fb_send'];
-		}
-		
-		// Check the Facebook syntax
-		$options['fb_publish_syntax'] = $input['fb_publish_syntax'];
-		/* End Facebook options */
-		
-		/* LinkedIn options */
-		// Check the value for enabling LinkedIn
-		if ( $input['linkedin_send'] == 'yes' || $input['linkedin_send'] == NULL ) {
-			$options['linkedin_send'] = $input['linkedin_send'];
-		}
-		
-		// Check the Facebook syntax
-		$options['linkedin_publish_syntax'] = $input['linkedin_publish_syntax'];
-		/* End LinkedIn options */
-		
-		// Save Twitter schedule directly
-		$options['twitter_post_number'] = $input['twitter_post_number'];
-		$options['twitter_post_interval'] = $input['twitter_post_interval'];
 		
 		return $options;
 	} // End options_validate()
+	
+	// Validate message syntax
+	function validate_syntax( $input ) {
+		// Check that the service is enabled
+		if ( $input ) {
+			// If the service is enabled, and proper syntax is used, return the syntax
+			return TRUE;
+		}
+		else {
+			return FALSE;
+		}
+	}
 	/*
 	===== End Admin Plugin Options =====
 	*/
@@ -451,7 +517,7 @@ class cc_wp_buffer_admin extends cc_wp_buffer {
 	 		'twitter_send' => NULL, // Don't enable Twitter by default
 	 		'twitter_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Twitter messages
 	 		'twitter_post_number' => 0, // Number of tweets to schedule
-	 		'twitter_post_interval' => 1, // Interval between scheduled tweets
+	 		'twitter_post_interval' => NULL, // Interval between scheduled tweets
 	 		'fb_send' => NULL, // Don't enable Facebook by default
 	 		'fb_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Facebook messages
 	 		'linkedin_send' => NULL, // Don't enable LinkedIn by default
