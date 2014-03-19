@@ -16,7 +16,7 @@ Buffer for WordPress allows you to send your posts and pages to Buffer to be sha
 
 == Installation ==
 
-1. Upload the `wp-buffer` directory to the `wp-content/plugins` directory
+1. Upload the `cc-wp-buffer` directory to the `wp-content/plugins` directory
 2. Activate the plugin through the `Plugins` menu in WordPress
 3. Adjust the settings on the `Buffer for WordPress` Settings page
 
