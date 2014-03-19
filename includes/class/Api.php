@@ -1,6 +1,6 @@
 <?php
 /**
- * Buffer API class
+ * Plugin Buffer API class
  * Handles all API calls for the plugin
  **/
 
@@ -16,6 +16,7 @@ class Api extends Buffer {
 	
 	/*
 	Buffer API request
+	All other plugin API calls use this method to connect to the Buffer API
 	Method arguments:
 		Access token*
 		API command*
@@ -49,7 +50,7 @@ class Api extends Buffer {
 	
 	/* User Methods */
 	// Validate a Buffer user
-	protected function validate_user( $access_token ) {
+	public function validate_user( $access_token ) {
 		// Check to make sure an access token is provided
 		if ( ! empty( $access_token ) ) {
 			// We'll be asking the Buffer API for information about the specified user
