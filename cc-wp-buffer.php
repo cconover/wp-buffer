@@ -10,6 +10,7 @@
  * @package cc-wp-buffer
  **/
 
+// Plugin namespace
 namespace cconover\buffer;
 
 /**
@@ -26,14 +27,17 @@ class Buffer {
 	/* Plugin properties */
 	protected $prefix = 'cc_wp_buffer_'; // Plugin database prefix
 	protected $options = array(); // Plugin options
+	protected $api; // Contains the plugin API object
 	protected $pluginpath; // Plugin directory path
 	protected $pluginfile; // Plugin file path
+	protected $classpath; // Path to class includes directory
 	/* End plugin properties */
 	
 	// Class constructor
-	public function __construct() {
+	function __construct() {
 		// Plugin initialization
 		$this->initialize();
+		$this->api_initialize();
 		
 		/* Admin elements (only loaded if in admin) */
 		if ( is_admin() ) {
@@ -45,11 +49,9 @@ class Buffer {
 			register_deactivation_hook( $this->pluginfile, array( &$admin, 'deactivate' ) ); // Plugin deactivation
 		}
 		/* End admin elements */
-		
-		// Load the Buffer API class
-		require_once( $this->pluginpath . '/includes/' . self::ID . '-api.php' );
 	} // End __construct()
 	
+	/* Plugin initialization methods */
 	// Initialize the plugin
 	protected function initialize() {
 		// Set $wpdb object to global
@@ -61,12 +63,22 @@ class Buffer {
 		// Set plugin directory and file paths
 		$this->pluginpath = dirname( __FILE__ ); // Plugin directory path
 		$this->pluginfile = __FILE__; // Plugin file path
+		
+		// Set path to class includes directory
+		$this->classpath = $this->pluginpath . '/includes/class/';
+	}
+	
+	// Initialize the plugin API
+	protected function api_initialize() {
+		require_once( $this->classpath . 'Api.php' );
+		$this->api = new \cconover\buffer\Api;
 	}
 	
 	// Get plugin options from the database
 	function get_options() {
 		$this->options = get_option( $this->prefix . 'options' );
 	}
+	/* End plugin initialization methods */
 }
 /**
  * End main plugin class
