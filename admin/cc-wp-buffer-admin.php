@@ -16,6 +16,7 @@ class Admin extends Buffer {
 	function __construct() {
 		// Initialize
 		$this->initialize();
+		$this->admin_initialize();
 		$this->api_initialize();
 		
 		/* Hooks and filters */
@@ -527,12 +528,41 @@ class Admin extends Buffer {
 	*/
 	
 	/*
+	===== Admin initialization =====
+	*/
+	// Initialize the admin class
+	protected function admin_initialize() {
+		// Run plugin upgrade
+		$this->upgrade();
+	} // End admin_initialize()
+	
+	// Plugin upgrade
+	function upgrade() {
+		// Check whether the database-stored plugin version number is less than the current plugin version number, or whether there is no plugin version saved in the database
+		if ( version_compare( $this->options['dbversion'], self::VERSION, '<' ) ) {
+			// Set local variable for options (always the first step in the upgrade process)
+			$options = $this->options;
+			
+			/* Update the plugin version saved in the database (always the last step of the upgrade process) */
+			// Set the value of the plugin version
+			$options['dbversion'] = self::VERSION;
+				
+			// Save to the database
+			update_option( $this->prefix . 'options', $options );
+			/* End update plugin version */
+		}
+	} // End upgrade()
+	/*
+	===== End Admin Initialization =====
+	*/
+	
+	/*
 	===== Plugin Activation and Deactivation =====
 	*/
 	// Plugin activation
 	public function activate() {
 		// Check to make sure the version of WordPress being used is compatible with the plugin
-		if ( version_compare( get_bloginfo( 'version' ), self::VERSION, '<' ) ) {
+		if ( version_compare( get_bloginfo( 'version' ), self::WPVER, '<' ) ) {
 	 		wp_die( 'Your version of WordPress is too old to use this plugin. Please upgrade to the latest version of WordPress.' );
 	 	}
 	 	
@@ -549,6 +579,7 @@ class Admin extends Buffer {
 	 		'fb_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Facebook messages
 	 		'linkedin_send' => null, // Don't enable LinkedIn by default
 	 		'linkedin_publish_syntax' => 'New Post: {title} {url}', // Default syntax of LinkedIn messages
+	 		'dbversion' => self::VERSION, // Current plugin version
 	 	);
 	 	
 	 	// Add options to database
