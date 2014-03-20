@@ -223,14 +223,12 @@ class Admin extends Buffer {
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
 		if ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) ) {
-			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Don\'t worry, I\'ll walk you through it. Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Callback URL</strong>: NEEDS TO BE SET</p>';
+			$callbackurl = admin_url( 'admin.php?page=' . self::ID );
+			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Don\'t worry, I\'ll walk you through it. Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Callback URL</strong>: <a href="' . $callbackurl . '">' . $callbackurl . '</a></p>';
 		}
-		// If they have been saved, check whether there's an access token and display the appropriate message
+		// If they have been saved, check whether there's an access token. If not, inform the user.
 		else {
-			if ( ! empty( $this->options['site_access_token'] ) ) {
-				echo '<p style="color: #199E22;">This site is fully authenticated with Buffer. Have fun!</p>';
-			}
-			else {
+			if ( empty( $this->options['site_access_token'] ) ) {
 				echo '<p style="color: #F08C00;">You\'re almost done! Copy the access token for the <a href="https://bufferapp.com/developers/apps" target="_blank">application you just registered</a> and paste it below.</p>';
 			}
 		}
@@ -360,7 +358,7 @@ class Admin extends Buffer {
 				add_settings_error (
 					self::ID, // Setting to which the error applies
 					'client-auth', // Identify the option throwing the error
-					'Whoops! The client ID or client secret you entered doesn\'t match Buffer\'s format. Double-check them both, and take another crack at it.', // Error message
+					'Hang on a second! The client ID or client secret you entered doesn\'t match Buffer\'s format. Double-check them both, and take another crack at it.', // Error message
 					'error' // The type of message it is
 				);
 			}
@@ -372,16 +370,36 @@ class Admin extends Buffer {
 			if ( ! empty( $input['site_access_token'] ) ) {
 				// Only perform the validation tasks if the value has changed from what's in the database
 				if ( $input['site_access_token'] != $this->options['site_access_token'] ) {
-					// Make sure the user is valid
-					if ( $this->api->validate_user( $input['site_access_token'] ) ) {
+					// Query the plugin API to validate the access token
+					$apiresult = $this->api->validate_user( $input['site_access_token'] );
+					
+					// If the API returns a user ID, and the user ID is hexadecimal, the access token is valid
+					if ( ! empty( $apiresult['id'] ) && ctype_xdigit( $apiresult['id'] ) ) {
 						$options['site_access_token'] = $input['site_access_token'];
+						
+						// Display a successful message on the next page load
+						add_settings_error (
+							self::ID, // Setting to which the message applies
+							'site-access-token', // Identify the option throwing the message
+							'Hooray! Your site is now fully authenticated with Buffer, and you\'re ready to go!', // Success message
+							'updated' // The type of message it is
+						);
 					}
-					// If the user is not valid, throw an error
-					else {
+					// If we got an error back from Buffer, notify the user
+					elseif ( ! empty( $apiresult['error'] ) ) {
 						add_settings_error (
 							self::ID, // Setting to which the error applies
 							'site-access-token', // Identify the option throwing the error
-							'Whoops! Buffer says that access token isn\'t quite right. Let\'s double-check what we put in, and give it another shot!', // Error message
+							'Uh oh! Buffer says that something is wrong. Let\'s double-check the access token, and give it another shot!<br><em>' . $apiresult['code'] . ' ' . $apiresult['error'] . '</em>', // Error message
+							'error' // The type of message it is
+						);
+					}
+					// If the result was a WordPress error, show the error
+					elseif ( is_wp_error( $apiresult ) ) {
+						add_settings_error (
+							self::ID, // Setting to which the error applies
+							'site-access-token', // Identify the option throwing the error
+							'Uh oh! WordPress had an error.<br><em>' . $apiresult->get_error_message() . '</em>', // Error message
 							'error' // The type of message it is
 						);
 					}
@@ -392,7 +410,7 @@ class Admin extends Buffer {
 				add_settings_error (
 					self::ID, // Setting to which the error applies
 					'site-access-token', // Identify the option throwing the error
-					'So close! It looks like you didn\'t provide an access token, and we can\'t continue without one. Let\'s try again!', // Error message
+					'Whoops! It looks like you didn\'t provide an access token, and we can\'t continue without one. Let\'s try again!', // Error message
 					'error' // The type of message it is
 				);
 			}
@@ -539,7 +557,7 @@ class Admin extends Buffer {
 	// Plugin upgrade
 	function upgrade() {
 		// Check whether the database-stored plugin version number is less than the current plugin version number, or whether there is no plugin version saved in the database
-		if ( version_compare( $this->options['dbversion'], self::VERSION, '<' ) ) {
+		if ( ! empty( $this->options['dbversion'] ) && version_compare( $this->options['dbversion'], self::VERSION, '<' ) ) {
 			// Set local variable for options (always the first step in the upgrade process)
 			$options = $this->options;
 			
