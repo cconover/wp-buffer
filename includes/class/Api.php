@@ -24,6 +24,9 @@ class Api extends Buffer {
 		WordPress API arguments for wp_remote_get and wp_remote_post (defaults to empty array)
 	*/
 	function request ( $access_token, $command, $method = 'get', $args = array() ) {
+		// Format command for the API request
+		$command = $command . '.json';
+		
 		// If the HTTP method is GET, do this
 		if ( $method == 'get' ) {
 			$request = wp_remote_get( 'https://api.bufferapp.com/1/' . $command . '?access_token=' . $access_token, $args );
@@ -38,15 +41,13 @@ class Api extends Buffer {
 			return $request;
 		}
 		
-		// If the response code is 200, return the decoded JSON response
-		if ( $request['response']['code'] == 200 ) {
-			return json_decode( $request['body'] );
-		}
-		// If not, return an error
-		else {
-			return 'Error ' . $request['response']['code'] . ': ' . $request['response']['message'];
-		}
+		// Return the JSON-decoded Buffer API response
+		return json_decode( $request['body'], true );
 	} // End request()
+	
+	/* Authentication Methods */
+	
+	/* End Authentication Methods */
 	
 	/* User Methods */
 	// Validate a Buffer user
@@ -59,20 +60,14 @@ class Api extends Buffer {
 			// Make the request to the Buffer API
 			$result = $this->request( $access_token, $command );
 			
-			// If the response includes a user ID, the user is valid
-			if ( ! empty( $result['id'] ) ) {
-				return true;
-			}
-			// If it doesn't, the specified user is no valid
-			else {
-				return false;
-			}
-		}
-		// If any of those items are missing, return that the user could not be validated
-		else {
-			return false;
+			// Return the response from the Buffer API
+			return $result;
 		}
 	} // End validate_user()
 	/* End User Methods */
+	
+	/* Profile Methods */
+	
+	/* End Profile Methods */
 }
 ?>
