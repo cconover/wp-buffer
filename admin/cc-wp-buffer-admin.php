@@ -376,6 +376,7 @@ class Admin extends Buffer {
 					// If the API returns a user ID, and the user ID is hexadecimal, the access token is valid
 					if ( ! empty( $apiresult['id'] ) && ctype_xdigit( $apiresult['id'] ) ) {
 						$options['site_access_token'] = $input['site_access_token'];
+						$options['site_user_id'] = $apiresult['id'];
 						
 						// Display a successful message on the next page load
 						add_settings_error (
@@ -589,6 +590,7 @@ class Admin extends Buffer {
 	 		'client_id' => null, // Application client ID
 	 		'client_secret' => null, // Application client secret
 	 		'site_access_token' => null, // Access token, for the Buffer account used to publish posts globally
+	 		'site_user_id' => null, // Buffer user ID for the account that will be used for site-level Buffer messages
 	 		'twitter_send' => null, // Don't enable Twitter by default
 	 		'twitter_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Twitter messages
 	 		'twitter_post_number' => 0, // Number of tweets to schedule
