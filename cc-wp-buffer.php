@@ -28,6 +28,7 @@ class Buffer {
 	protected $prefix = 'cc_wp_buffer_'; // Plugin database prefix
 	protected $options = array(); // Plugin options
 	protected $api; // Contains the plugin API object
+	protected $callbackurl; // The Buffer API callback URL
 	protected $pluginpath; // Plugin directory path
 	protected $pluginfile; // Plugin file path
 	protected $classpath; // Path to class includes directory
@@ -72,6 +73,9 @@ class Buffer {
 	protected function api_initialize() {
 		require_once( $this->classpath . 'Api.php' );
 		$this->api = new \cconover\buffer\Api;
+		
+		// Set the value of the Buffer API callback URL
+		$this->callbackurl = admin_url( 'options-general.php?page=' . self::ID );
 	}
 	
 	// Get plugin options from the database

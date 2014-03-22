@@ -16,8 +16,8 @@ class Admin extends Buffer {
 	function __construct() {
 		// Initialize
 		$this->initialize();
-		$this->admin_initialize();
 		$this->api_initialize();
+		$this->admin_initialize();
 		
 		/* Hooks and filters */
 		add_action( 'admin_menu', array( &$this, 'create_options_menu' ) ); // Add menu entry to Settings menu
@@ -223,13 +223,12 @@ class Admin extends Buffer {
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
 		if ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) ) {
-			$callbackurl = admin_url( 'admin.php?page=' . self::ID );
-			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>Don\'t worry, I\'ll walk you through it. Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Callback URL</strong>: <a href="' . $callbackurl . '">' . $callbackurl . '</a></p>';
+			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>It\'s easy! Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Callback URL</strong>: <a href="' . $this->callbackurl . '">' . $this->callbackurl . '</a></p>';
 		}
 		// If they have been saved, check whether there's an access token. If not, inform the user.
 		else {
 			if ( empty( $this->options['site_access_token'] ) ) {
-				echo '<p style="color: #F08C00;">You\'re almost done! Copy the access token for the <a href="https://bufferapp.com/developers/apps" target="_blank">application you just registered</a> and paste it below.</p>';
+				echo '<p style="color: #F08C00;">You\'re almost done! Click the button below to authorize this site to access your Buffer account.</p>';
 			}
 		}
 	} // End auth_callback()
@@ -269,8 +268,8 @@ class Admin extends Buffer {
 	
 	// Access token
 	function site_access_token_callback() {
-		// Show text input to provide access token
-		echo '<input type="text" name="' . $this->prefix . 'options[site_access_token]" id="' . $this->prefix . 'options[site_access_token]" value="' . $this->options['site_access_token'] . '" size=40>';
+		// Show button to start OAuth process with Buffer
+		echo '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . urlencode( $this->callbackurl ) . '&response_type=code">Authorize with Buffer</a>';
 	} // End client_id_callback()
 	
 	// Enable Twitter
@@ -288,7 +287,7 @@ class Admin extends Buffer {
 	// Twitter syntax
 	function twitter_publish_syntax_callback() {
 		echo '<input type="text" name="' . $this->prefix . 'options[twitter_publish_syntax]" id="' . $this->prefix . 'options[twitter_publish_syntax]" value="' . $this->options['twitter_publish_syntax'] . '" size=40><br />';
-		echo '<span class="description">Available tags: {title}, {url}</span>';
+		echo '<span class="description">Available tags: {{title}}, {{url}}</span>';
 	} // End twitter_publish_syntax_callback()
 	
 	// Twitter schedule
@@ -319,7 +318,7 @@ class Admin extends Buffer {
 	// Facebook syntax
 	function fb_publish_syntax_callback() {
 		echo '<input type="text" name="' . $this->prefix . 'options[fb_publish_syntax]" id="' . $this->prefix . 'options[fb_publish_syntax]" value="' . $this->options['fb_publish_syntax'] . '" size=40><br />';
-		echo '<span class="description">Available tags: {title}, {url}</span>';
+		echo '<span class="description">Available tags: {{title}}, {{url}}</span>';
 	} // End fb_publish_syntax_callback()
 	
 	// Enable LinkedIn
@@ -337,7 +336,7 @@ class Admin extends Buffer {
 	// LinkedIn syntax
 	function linkedin_publish_syntax_callback() {
 		echo '<input type="text" name="' . $this->prefix . 'options[linkedin_publish_syntax]" id="' . $this->prefix . 'options[linkedin_publish_syntax]" value="' . $this->options['linkedin_publish_syntax'] . '" size=40><br />';
-		echo '<span class="description">Available tags: {title}, {url}</span>';
+		echo '<span class="description">Available tags: {{title}}, {{url}}</span>';
 	} // End linkedin_publish_syntax_callback()
 	/* End plugin options callbacks */
 	
@@ -371,7 +370,7 @@ class Admin extends Buffer {
 				// Only perform the validation tasks if the value has changed from what's in the database
 				if ( $input['site_access_token'] != $this->options['site_access_token'] ) {
 					// Query the plugin API to validate the access token
-					$apiresult = $this->api->validate_user( $input['site_access_token'] );
+					$apiresult = $this->api->get_user( $input['site_access_token'] );
 					
 					// If the API returns a user ID, and the user ID is hexadecimal, the access token is valid
 					if ( ! empty( $apiresult['id'] ) && ctype_xdigit( $apiresult['id'] ) ) {
@@ -387,11 +386,11 @@ class Admin extends Buffer {
 						);
 					}
 					// If we got an error back from Buffer, notify the user
-					elseif ( ! empty( $apiresult['error'] ) ) {
+					elseif ( ! empty( $apiresult['code'] ) ) {
 						add_settings_error (
 							self::ID, // Setting to which the error applies
 							'site-access-token', // Identify the option throwing the error
-							'Uh oh! Buffer says that something is wrong. Let\'s double-check the access token, and give it another shot!<br><em>' . $apiresult['code'] . ' ' . $apiresult['error'] . '</em>', // Error message
+							'Uh oh! Buffer says that something went wrong. Let\'s give it another shot!<br><em>' . $apiresult['code'] . ' ' . $apiresult['error'] . '</em>', // Error message
 							'error' // The type of message it is
 						);
 					}
@@ -411,7 +410,7 @@ class Admin extends Buffer {
 				add_settings_error (
 					self::ID, // Setting to which the error applies
 					'site-access-token', // Identify the option throwing the error
-					'Whoops! It looks like you didn\'t provide an access token, and we can\'t continue without one. Let\'s try again!', // Error message
+					'Whoops! It looks like you haven\'t yet authenticated with Buffer, and we can\'t continue until that\'s done. Let\'s try again!', // Error message
 					'error' // The type of message it is
 				);
 			}
@@ -553,6 +552,11 @@ class Admin extends Buffer {
 	protected function admin_initialize() {
 		// Run plugin upgrade
 		$this->upgrade();
+		
+		// Check for call to plugin API callback
+		if ( ( ! empty( $_REQUEST['page'] ) && $_REQUEST['page'] == self::ID ) && ( isset( $_REQUEST['code'] ) || isset( $_REQUEST['error'] ) ) ) {
+			$this->api->buffer_oauth_request();
+		}
 	} // End admin_initialize()
 	
 	// Plugin upgrade
@@ -592,13 +596,13 @@ class Admin extends Buffer {
 	 		'site_access_token' => null, // Access token, for the Buffer account used to publish posts globally
 	 		'site_user_id' => null, // Buffer user ID for the account that will be used for site-level Buffer messages
 	 		'twitter_send' => null, // Don't enable Twitter by default
-	 		'twitter_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Twitter messages
+	 		'twitter_publish_syntax' => 'New Post: {{title}} {{url}}', // Default syntax of Twitter messages
 	 		'twitter_post_number' => 0, // Number of tweets to schedule
 	 		'twitter_post_interval' => null, // Interval between scheduled tweets
 	 		'fb_send' => null, // Don't enable Facebook by default
-	 		'fb_publish_syntax' => 'New Post: {title} {url}', // Default syntax of Facebook messages
+	 		'fb_publish_syntax' => 'New Post: {{title}} {{url}}', // Default syntax of Facebook messages
 	 		'linkedin_send' => null, // Don't enable LinkedIn by default
-	 		'linkedin_publish_syntax' => 'New Post: {title} {url}', // Default syntax of LinkedIn messages
+	 		'linkedin_publish_syntax' => 'New Post: {{title}} {{url}}', // Default syntax of LinkedIn messages
 	 		'dbversion' => self::VERSION, // Current plugin version
 	 	);
 	 	
