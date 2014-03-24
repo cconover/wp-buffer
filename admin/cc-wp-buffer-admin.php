@@ -268,8 +268,8 @@ class Admin extends Buffer {
 	
 	// Access token
 	function site_access_token_callback() {
-		// Show button to start OAuth process with Buffer
-		echo '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . urlencode( $this->callbackurl ) . '&response_type=code">Authorize with Buffer</a>';
+		// Load the plugin API method for authenticating the site with the Buffer API via OAuth
+		$this->api->buffer_oauth_request();
 	} // End client_id_callback()
 	
 	// Enable Twitter
@@ -552,11 +552,6 @@ class Admin extends Buffer {
 	protected function admin_initialize() {
 		// Run plugin upgrade
 		$this->upgrade();
-		
-		// Check for call to plugin API callback
-		if ( ( ! empty( $_REQUEST['page'] ) && $_REQUEST['page'] == self::ID ) && ( isset( $_REQUEST['code'] ) || isset( $_REQUEST['error'] ) ) ) {
-			$this->api->buffer_oauth_request();
-		}
 	} // End admin_initialize()
 	
 	// Plugin upgrade
