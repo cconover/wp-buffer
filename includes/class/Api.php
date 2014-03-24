@@ -57,7 +57,7 @@ class Api extends Buffer {
 			$postdata = array(
 				'client_id' => $this->options['client_id'], // Application client ID
 				'client_secret' => $this->options['client_secret'], // Application client secret
-				'redirect_url' => urlencode( $this->callbackurl ), // The callback endpoint for the plugin
+				'redirect_url' => $this->callbackurl( true ), // The callback endpoint for the plugin (encode for URL)
 				'code' => $code, // The temporary code we just got from Buffer
 				'grant_type' => 'authorization_code' // We want back a long-term access token
 			);
@@ -97,7 +97,31 @@ class Api extends Buffer {
 				}
 			}
 		}
+		// If the API returns an error, handle that
+		elseif ( isset( $_REQUEST['error'] ) ) {
+			echo '<strong>Uh oh! Buffer replied with an error. Let\'s try again!</strong>';
+		}
+		// If nothing has been sent by the Buffer API, show the button to initiate the OAuth process
+		else {
+			// Format the callback URL to be passed to the API
+			$callbackurl = $this->callbackurl( true );
+			// Show button to start OAuth process with Buffer
+		echo '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $callbackurl. '&response_type=code">Authorize with Buffer</a>';
+		}
 	} // End buffer_oauth_request()
+	
+	// Set API callback URL
+	public function callbackurl( $encode = false ) {
+		// Set the URL
+		$url = admin_url( 'options-general.php?page=' . self::ID );
+		
+		// If $encode is true, encode $url for use in a URL
+		if ( $encode == true ) {
+			$url = urlencode( $url );
+		}
+		
+		return $url;
+	}
 	/* End Authentication Methods */
 	
 	/* User Methods */

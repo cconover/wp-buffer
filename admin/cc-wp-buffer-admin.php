@@ -223,7 +223,7 @@ class Admin extends Buffer {
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
 		if ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) ) {
-			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>It\'s easy! Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Callback URL</strong>: <a href="' . $this->callbackurl . '">' . $this->callbackurl . '</a></p>';
+			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>It\'s easy! Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Callback URL</strong>: <a href="' . $this->api->callbackurl() . '">' . $this->api->callbackurl() . '</a></p>';
 		}
 		// If they have been saved, check whether there's an access token. If not, inform the user.
 		else {
