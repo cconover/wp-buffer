@@ -72,6 +72,9 @@ class Admin extends Buffer {
 			array( &$this, 'options_validate' ) // The callback method to validate plugin options
 		);
 		
+		// Load the plugin API method for authenticating with the Buffer API via OAuth
+		$this->api->buffer_oauth_request();
+		
 		// Load plugin options for authorization
 		$this->auth_options();
 		
@@ -268,8 +271,11 @@ class Admin extends Buffer {
 	
 	// Access token
 	function site_access_token_callback() {
-		// Load the plugin API method for authenticating the site with the Buffer API via OAuth
-		$this->api->buffer_oauth_request();
+		// If access token is not set, show the button to set up the authorization
+		if ( empty( $this->options['access_token'] ) ) {
+			// Show button to start OAuth process with Buffer
+			echo '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $this->api->callbackurl( true ) . '&response_type=code">Authorize with Buffer</a>';
+		}
 	} // End client_id_callback()
 	
 	// Enable Twitter
