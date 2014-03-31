@@ -50,21 +50,18 @@ class Api extends Buffer {
 	public function buffer_oauth_request() {
 		// See whether Buffer has replied with a code
 		if ( isset( $_REQUEST['code'] ) ) {
-			// Set a local variable for the code returned
-			$code = $_REQUEST['code'];
+			// Set a local variable for the code returned, decode from URL format
+			$code = urldecode( $_REQUEST['code'] );
 			
-			// Set up the data to be sent to the Buffer API
-			$postdata = array(
-				'client_id' => $this->options['client_id'], // Application client ID
-				'client_secret' => $this->options['client_secret'], // Application client secret
-				'redirect_url' => $this->callbackurl( true ), // The callback endpoint for the plugin (encode for URL)
-				'code' => $code, // The temporary code we just got from Buffer
-				'grant_type' => 'authorization_code' // We want back a long-term access token
-			);
-			
-			// Set parameters for the WordPress HTTP API
+			// Set parameters for the WordPress HTTP API, including the POST data
 			$args = array(
-				'body' => $postdata // Send the POST data to the HTTP API
+				'body' => array(
+					'client_id' => $this->options['client_id'], // Application client ID
+					'client_secret' => $this->options['client_secret'], // Application client secret
+					'redirect_url' => $this->callbackurl( true ), // The callback endpoint for the plugin (encode for URL)
+					'code' => $code, // The temporary code we just got from Buffer
+					'grant_type' => 'authorization_code' // We want back a long-term access token
+				)
 			);
 			
 			// Make the request to the Buffer API
@@ -92,21 +89,13 @@ class Api extends Buffer {
 					update_option( $this->prefix . 'options', $options );
 					
 					// Redirect the user back to the plugin options page
-					wp_redirect( admin_url( 'options-general.php?page=' . self::ID ) );
-					exit;
+					wp_safe_redirect( $this->callbackurl() );
 				}
 			}
 		}
 		// If the API returns an error, handle that
 		elseif ( isset( $_REQUEST['error'] ) ) {
 			echo '<strong>Uh oh! Buffer replied with an error. Let\'s try again!</strong>';
-		}
-		// If nothing has been sent by the Buffer API, show the button to initiate the OAuth process
-		else {
-			// Format the callback URL to be passed to the API
-			$callbackurl = $this->callbackurl( true );
-			// Show button to start OAuth process with Buffer
-		echo '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $callbackurl. '&response_type=code">Authorize with Buffer</a>';
 		}
 	} // End buffer_oauth_request()
 	
