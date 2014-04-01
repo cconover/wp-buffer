@@ -3,7 +3,7 @@
  * Plugin Name: Buffer for WordPress
  * Plugin URI: https://christiaanconover.com/code/wp-buffer?ref=plugin-data
  * Description: Buffer for WordPress allows you to use Buffer to share your posts and pages with social media, using their suite of sharing features.
- * Version: 0.1.0-alpha
+ * Version: 0.1.0-alpha1
  * Author: Christiaan Conover
  * Author URI: https://christiaanconover.com?ref=wp-buffer-plugin-author-uri
  * License: GPLv2
@@ -20,12 +20,12 @@ class Buffer {
 	/* Plugin constants */
 	const ID = 'cc-wp-buffer'; // Plugin ID
 	const NAME = 'Buffer for WordPress'; // Plugin name
-	const VERSION = '0.1.0-alpha'; // Plugin version
+	const VERSION = '0.1.0-alpha1'; // Plugin version
 	const WPVER = '3.6'; // Minimum version of WordPress required for this plugin
+	const PREFIX = 'cc_wp_buffer_'; // Plugin database prefix
 	/* End plugin constants */
 	
 	/* Plugin properties */
-	protected $prefix = 'cc_wp_buffer_'; // Plugin database prefix
 	protected $options = array(); // Plugin options
 	protected $api; // Contains the plugin API object
 	protected $pluginpath; // Plugin directory path
@@ -76,7 +76,7 @@ class Buffer {
 	
 	// Get plugin options from the database
 	function get_options() {
-		$this->options = get_option( $this->prefix . 'options' );
+		$this->options = get_option( self::PREFIX . 'options' );
 	}
 	/* End plugin initialization methods */
 }
