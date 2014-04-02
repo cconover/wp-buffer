@@ -31,7 +31,7 @@ class Admin extends Buffer {
 		if ( ( ! empty( $_REQUEST['page'] ) && $_REQUEST['page'] != self::ID ) && ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) || empty( $this->options['site_access_token'] ) ) ) {
 			?>
 			<div class="error">
-				<p><a href="<?php echo $this->api->callbackurl(); ?>"><?php echo self::NAME; ?> needs to be connected to Buffer.</p>
+				<p><a href="<?php echo $this->api->optionsurl(); ?>"><?php echo self::NAME; ?> needs to be connected to Buffer.</p>
 			</div>
 			<?php
 		}
@@ -239,7 +239,10 @@ class Admin extends Buffer {
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
 		if ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) ) {
-			$callbackurl = $this->api->callbackurl( false, array( 'noheader' => 'true' ) );
+			// Set the callback URL. Do not encode for a URL string, and append (noheader=true) to the end of the URL
+			$callbackurl = $this->api->optionsurl( false, array( 'noheader' => 'true' ) );
+			
+			// Display the message
 			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>It\'s easy! Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Callback URL</strong>: <a href="' . $callbackurl . '">' . $callbackurl . '</a></p>';
 		}
 		// If they have been saved, check whether there's an access token. If not, inform the user.
@@ -285,13 +288,14 @@ class Admin extends Buffer {
 	
 	// Access token
 	function site_access_token_callback() {
-		// If access token is not set, take appropriate action
+		// If access token is not set, run the process to retrieve it
 		if ( empty( $this->options['site_access_token'] ) ) {
 			// Call the OAuth method
-			$this->api->buffer_oauth_request();
+			$this->api->buffer_oauth_connect();
 		}
+		// If the plugin is fully authenticated with Buffer, provide the option to disconnect
 		else {
-			echo 'Disconnect';
+			$this->api->buffer_oauth_disconnect();
 		}
 	} // End client_id_callback()
 	

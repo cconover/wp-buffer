@@ -15,6 +15,30 @@ class Api extends Buffer {
 	} // End __construct()
 	
 	/*
+	Plugin URL (used for callbacks, etc.)
+	@param boolean $encode whether to encode the result for use in a URL string
+	@param array $args variables to be added to the end of the URL. Must be an associative array, using 'variable_name' => 'value' syntax
+	*/
+	public function optionsurl( $encode = false, $args = array() ) {
+		// Set the URL
+		$url = admin_url( 'options-general.php?page=' . self::ID );
+		
+		// If any elements were sent in $args, run through them to add to the end of the URL
+		if ( ! empty( $args ) ) {
+			foreach ( $args as $name => $value ) {
+				$url .= '&' . $name . '=' . $value;
+			}
+		}
+		
+		// If $encode is true, encode $url for use in a URL
+		if ( $encode == true ) {
+			$url = urlencode( $url );
+		}
+		
+		return $url;
+	} // End optionsurl()
+	
+	/*
 	Buffer API request
 	All other plugin API calls use this method to connect to the Buffer API
 	@param string $access_token Buffer access token
@@ -46,9 +70,9 @@ class Api extends Buffer {
 	
 	/* Authentication Methods */
 	// Make the request to the Buffer API for OAuth authorization
-	public function buffer_oauth_request() {
+	public function buffer_oauth_connect() {
 		// Create the 'Authorize with Buffer' button
-		$oauth_button = '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $this->callbackurl( true, array( 'noheader' => 'true' ) ) . '&response_type=code">Authenticate Me!</a>';
+		$oauth_button = '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $this->optionsurl( true, array( 'noheader' => 'true' ) ) . '&response_type=code">Authenticate Me!</a>';
 		
 		// See whether Buffer has replied with a code
 		if ( ! empty( $_REQUEST['code'] ) ) {
@@ -60,7 +84,7 @@ class Api extends Buffer {
 				'body' => array(
 					'client_id' => $this->options['client_id'], // Application client ID
 					'client_secret' => $this->options['client_secret'], // Application client secret
-					'redirect_uri' => $this->callbackurl( false, array( 'noheader' => 'true' ) ), // The callback endpoint for the plugin
+					'redirect_uri' => $this->optionsurl( false, array( 'noheader' => 'true' ) ), // The callback endpoint for the plugin
 					'code' => $code, // The temporary code we just got from Buffer
 					'grant_type' => 'authorization_code' // We want back a long-term access token
 				)
@@ -96,7 +120,7 @@ class Api extends Buffer {
 						update_option( self::PREFIX . 'options', $options );
 					
 						// Redirect the user back to the plugin options page
-						wp_redirect( $this->callbackurl() );
+						wp_redirect( $this->optionsurl() );
 					}
 					// If we get an error, notify the user
 					elseif ( ! empty( $user['code'] ) ) {
@@ -116,50 +140,67 @@ class Api extends Buffer {
 		else {
 			echo $oauth_button;
 		}
-	} // End buffer_oauth_request()
+	} // End buffer_oauth_connect()
 	
-	/*Set API callback URL
-	@param boolean $encode whether to encode the result for use in a URL string
-	@param array $args variables to be added to the end of the URL. Must be an associative array, using 'variable_name' => 'value' syntax
-	*/
-	public function callbackurl( $encode = false, $args = array() ) {
-		// Set the URL
-		$url = admin_url( 'options-general.php?page=' . self::ID );
-		
-		// If any elements were sent in $args, run through them to add to the end of the URL
-		if ( ! empty( $args ) ) {
-			foreach ( $args as $name => $value ) {
-				$url .= '&' . $name . '=' . $value;
-			}
+	// Disconnect the OAuth authentication from Buffer
+	public function buffer_oauth_disconnect() {
+		// Check whether a request to disconnect has been made
+		if ( isset( $_REQUEST['buffer_oauth_disconnect'] ) ) {
+			// Set a local variable for the class options property
+			$options = $this->options;
+			
+			// Remove the site access token
+			$options['site_access_token'] = null;
+			
+			// Update the plugin options with the newly empty site access token
+			update_option( self::PREFIX . 'options', $options );
+			
+			// Redirect the user back to the plugin options page
+			wp_redirect( $this->optionsurl() );
 		}
-		
-		// If $encode is true, encode $url for use in a URL
-		if ( $encode == true ) {
-			$url = urlencode( $url );
+		// If no request for disconnect has been made, display a button for disconnecting
+		else {
+			echo '<a class="button" href="' . $this->optionsurl( false, array( 'buffer_oauth_disconnect' => 'yes', 'noheader' => 'true' ) ) . '">Disconnect</a>';
 		}
-		
-		return $url;
 	}
 	/* End Authentication Methods */
 	
 	/* User Methods */
 	// Validate a Buffer user
 	public function get_user( $access_token ) {
-		// Check to make sure an access token is provided
-		if ( ! empty( $access_token ) ) {
-			// We'll be asking the Buffer API for information about the specified user
-			$command = 'user';
+		// We'll be asking the Buffer API for information about the specified user
+		$command = 'user';
 			
-			// Make the request to the Buffer API
-			$result = $this->request( $access_token, $command );
+		// Make the request to the Buffer API
+		$result = $this->request( $access_token, $command );
 			
-			// Return the response from the Buffer API
-			return $result;
-		}
+		// Return the response from the Buffer API
+		return $result;
 	} // End validate_user()
 	/* End User Methods */
 	
 	/* Profile Methods */
+	/**
+	 * Get a profile (or all profiles) for the specified user account
+	 * @param string $access_token the access token for the account
+	 * @param string $profile the profile to be retrieve (defaults to all profiles associated with the account)
+	 **/
+	public function get_profile( $access_token, $profile = null ) {
+		// If a specific profile is specified, use the Buffer endpoint for that profile
+		if ( ! empty( $profile ) ) {
+			$command = 'profiles/' . $profile;
+		}
+		// If no profile is specified, get all the profiles for the account
+		else {
+			$command = 'profiles';
+		}
+		
+		// Make the request to the Buffer API
+		$result = $this->request( $access_token, $command );
+		
+		// Return the reponse
+		return $result;
+	} // End get_profile()
 	
 	/* End Profile Methods */
 }
