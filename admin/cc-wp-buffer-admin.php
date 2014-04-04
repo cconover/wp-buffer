@@ -12,6 +12,9 @@ namespace cconover\buffer;
  * Extends main plugin class
  **/
 class Admin extends Buffer {
+	/* Class properties */
+	protected $profile; // All the social media profiles associated with site-wide Buffer account
+	
 	// Class constructor
 	function __construct() {
 		// Initialize plugin data
@@ -19,29 +22,20 @@ class Admin extends Buffer {
 		$this->admin_initialize();
 		
 		/* Hooks and filters */
-		add_action( 'admin_menu', array( &$this, 'create_options_menu' ) ); // Add menu entry to Settings menu
-		add_action( 'admin_init', array( &$this, 'set_options_init' ) ); // Initialize plugin options
-		add_action( 'admin_notices', array( &$this, 'admin_notices' ) ); // General admin notices
+		add_action( 'admin_menu', array( &$this, 'options_menu' ) ); // Add menu entry to Settings menu
+		add_action( 'admin_init', array( &$this, 'options_init' ) ); // Initialize plugin options
 		/* End hooks and filters */
+		
+		/* Admin notices */
+		add_action( 'admin_notices', array( &$this, 'notice_not_auth' ) ); // If plugin is not fully authenticated
+		/* End admin notices */
 	} // End __construct()
-	
-	// General admin notices
-	function admin_notices() {
-		// If the plugin isn't authenticated with Buffer, display a notice throughout the admin area (minus the options page for this plugin)
-		if ( ( ! empty( $_REQUEST['page'] ) && $_REQUEST['page'] != self::ID ) && ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) || empty( $this->options['site_access_token'] ) ) ) {
-			?>
-			<div class="error">
-				<p><a href="<?php echo $this->api->optionsurl(); ?>"><?php echo self::NAME; ?> needs to be connected to Buffer.</p>
-			</div>
-			<?php
-		}
-	} // End admin_notices()
 	
 	/*
 	===== Admin Plugin Options =====
 	*/
 	// Create submenu entry under the Settings menu
-	function create_options_menu() {
+	function options_menu() {
 		add_options_page(
 			self::NAME, // Page title. This is displayed in the browser title bar.
 			self::NAME, // Menu title. This is displayed in the Settings submenu.
@@ -49,7 +43,7 @@ class Admin extends Buffer {
 			self::ID, // Menu slug
 			array( &$this, 'options_page' ) // Function to render the options page
 		);
-	} // End create_options_menu()
+	} // End options_menu()
 	
 	// Render options page
 	function options_page() {
@@ -60,7 +54,6 @@ class Admin extends Buffer {
 		?>
 		
 		<div class="wrap">
-			<?php screen_icon(); ?>
 			<h2><?php echo self::NAME; ?></h2>
 			
 			<form action="options.php" method="post">
@@ -80,7 +73,7 @@ class Admin extends Buffer {
 	} // End options_page()
 	
 	// Set up options page
-	function set_options_init() {
+	function options_init() {
 		// Register the plugin settings
 		register_setting(
 			self::PREFIX . 'options_fields', // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
@@ -88,16 +81,23 @@ class Admin extends Buffer {
 			array( &$this, 'options_validate' ) // The callback method to validate plugin options
 		);
 		
+		// If the plugin is authenticated and we're on the plugin options page, retrieve the profiles in the Buffer account
+		if ( $this->api->is_site_authenticated() && ( isset( $_REQUEST['page'] ) && $_REQUEST['page'] == self::ID ) ) {
+			$this->profile = $this->api->get_profile( $this->options['site_access_token'] );
+			
+			// If WordPress returns an error, notify the user
+			if ( is_wp_error( $this->profile ) ) {
+				echo '<div class="error settings-error"><p><strong>Uh oh! We had a problem getting the social media accounts tied to your Buffer account. Let\'s try again.</strong><br /><em>WordPress Error: ' . $this->profile->get_error_message() . '</em></p></div>';
+			}
+			// If Buffer returns an error, notify the user
+			elseif ( ! empty( $this->profile['code'] ) ) {
+				echo '<div class="error settings-error"><p><strong>Uh oh! We had a problem getting the social media accounts tied to your Buffer account. Let\'s try again.</strong><br /><em>API Error: ' . $this->profile['code'] . ' ' . $this->profile['error'] . '</em></p></div>';
+			}
+		}
+		
 		// Load plugin options for authorization
 		$this->auth_options();
-		
-		// If the application has been fully authenticated with Buffer, load the rest of the options
-		if ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) && ! empty( $this->options['site_access_token'] ) ) {
-			// Options page sections and fields
-			$this->set_options_sections();
-			$this->set_options_fields();
-		}
-	} // End set_options_init()
+	} // End options_init()
 	
 	// Options for Buffer authorization
 	function auth_options() {
@@ -108,6 +108,7 @@ class Admin extends Buffer {
 			array( &$this, 'auth_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
+		
 		// If the Client ID and Client Secret are not stored in the database, show the fields for those items
 		if ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) ) {
 			// Buffer application client ID
@@ -141,106 +142,13 @@ class Admin extends Buffer {
 		}
 	} // End auth_options()
 	
-	// Set up options page sections
-	function set_options_sections() {		
-		// Twitter settings
-		add_settings_section(
-			'twitter', // Name of the section
-			'Twitter', // Title of the section, displayed on the options page
-			array( &$this, 'twitter_callback' ), // Callback method to display plugin options
-			self::ID // Page ID for the options page
-		);
-		
-		// Facebook settings
-		add_settings_section(
-			'fb', // Name of the section
-			'Facebook', // Title of the section, displayed on the options page
-			array( &$this, 'fb_callback' ), // Callback method to display plugin options
-			self::ID // Page ID for the options page
-		);
-		
-		// LinkedIn settings
-		add_settings_section(
-			'linkedin', // Name of the section
-			'LinkedIn', // Title of the section, displayed on the options page
-			array( &$this, 'linkedin_callback' ), // Callback method to display plugin options
-			self::ID // Page ID for the options page
-		);
-	} // End set_options_sections()
-	
-	// Set up options fields
-	function set_options_fields() {
-		// Enable Twitter
-		add_settings_field(
-			'twitter_send', // Field ID
-			'Send Posts to Twitter', // Field title/label, displayed to the user
-			array( &$this, 'twitter_send_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'twitter' // Settings section in which to display the field
-		);
-		
-		// Default syntax for Twitter messages
-		add_settings_field(
-			'twitter_publish_syntax', // Field ID
-			'Tweet Format', // Field title/label, displayed to the user
-			array( &$this, 'twitter_publish_syntax_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'twitter' // Settings section in which to display the field
-		);
-		
-		// Schedule for Twitter messsages
-		add_settings_field(
-			'twitter_schedule', // Field ID
-			'Schedule for Tweets', // Field title/label, displayed to the user
-			array( &$this, 'twitter_schedule_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'twitter' // Settings section in which to display the field
-		);
-		
-		// Enable Facebook
-		add_settings_field(
-			'fb_send', // Field ID
-			'Send Posts to Facebook', // Field title/label, displayed to the user
-			array( &$this, 'fb_send_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'fb' // Settings section in which to display the field
-		);
-		
-		// Default syntax for Facebook messages
-		add_settings_field(
-			'fb_publish_syntax', // Field ID
-			'Facebook Post Format', // Field title/label, displayed to the user
-			array( &$this, 'fb_publish_syntax_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'fb' // Settings section in which to display the field
-		);
-		
-		// Enable LinkedIn
-		add_settings_field(
-			'twitter_send', // Field ID
-			'Send Posts to LinkedIn', // Field title/label, displayed to the user
-			array( &$this, 'linkedin_send_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'linkedin' // Settings section in which to display the field
-		);
-		
-		// Default syntax for LinkedIn messages
-		add_settings_field(
-			'linkedin_publish_syntax', // Field ID
-			'LinkedIn Post Format', // Field title/label, displayed to the user
-			array( &$this, 'linkedin_publish_syntax_callback' ), // Callback method to display the option field
-			self::ID, // Page ID for the options page
-			'linkedin' // Settings section in which to display the field
-		);
-	} // End set_options_fields()
-	
 	/* Plugin options callbacks */
 	// Authorization section
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
 		if ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) ) {
-			// Set the callback URL. Do not encode for a URL string, and append (noheader=true) to the end of the URL
-			$callbackurl = $this->api->optionsurl( false, array( 'noheader' => 'true' ) );
+			// Set the callback URL. Do not encode for a URL string.
+			$callbackurl = $this->api->optionsurl();
 			
 			// Display the message
 			echo '<p style="color: #E30000; font-weight: bold;">In order to use this plugin, you need to <a href="https://bufferapp.com/developers/apps/create" target="_blank">register it as a Buffer application</a></p><p>It\'s easy! Once you\'ve registered the application, copy the Client ID and Client Secret from the email you receive and paste them here.</p><p><strong>Callback URL</strong>: <a href="' . $callbackurl . '">' . $callbackurl . '</a></p>';
@@ -253,25 +161,10 @@ class Admin extends Buffer {
 		}
 	} // End auth_callback()
 	
-	// Twitter section
-	function twitter_callback() {
-		
-	} // End twitter_callback()
-	
-	// Facebook section
-	function fb_callback() {
-		
-	} // End fb_callback()
-	
-	// LinkedIn section
-	function linkedin_callback() {
-		
-	} // End linkedin_callback()
-	
 	// Client ID
 	function client_id_callback() {
 		?>
-		<input type="text" name="<?php echo self::PREFIX; ?>options[client_id]" id="<?php echo self::PREFIX; ?>options[client_id]" value="<?php echo $this->options['client_id']; ?>" size=40>
+		<input type="text" name="<?php echo self::PREFIX; ?>options[client_id]" id="<?php echo self::PREFIX; ?>options_client_id" value="<?php echo $this->options['client_id']; ?>" size=40>
 		<?php
 	} // End client_id_callback()
 	
@@ -279,10 +172,10 @@ class Admin extends Buffer {
 	function client_secret_callback() {
 		// If client secret is saved in the database, the field is type 'password'. If not, it's type 'text'.
 		if ( ! empty( $this->options['client_secret'] ) ) {
-			echo '<input type="password" name="' . self::PREFIX . 'options[client_secret]" id="' . self::PREFIX . 'options[client_secret]" value="' . $this->options['client_secret'] . '" size=40>';
+			echo '<input type="password" name="' . self::PREFIX . 'options[client_secret]" id="' . self::PREFIX . 'options_client_secret" value="' . $this->options['client_secret'] . '" size=40>';
 		}
 		else {
-			echo '<input type="text" name="' . self::PREFIX . 'options[client_secret]" id="' . self::PREFIX . 'options[client_secret]" value="' . $this->options['client_secret'] . '" size=40>';
+			echo '<input type="text" name="' . self::PREFIX . 'options[client_secret]" id="' . self::PREFIX . 'options_client_secret" value="' . $this->options['client_secret'] . '" size=40>';
 		}
 	} // End client_id_callback()
 	
@@ -298,73 +191,6 @@ class Admin extends Buffer {
 			$this->api->buffer_oauth_disconnect();
 		}
 	} // End client_id_callback()
-	
-	// Enable Twitter
-	function twitter_send_callback() {
-		// Determine whether checkbox should be checked
-		if ( $this->options['twitter_send'] == 'yes' ) {
-			$checked = 'checked';
-		}
-		else {
-			$checked = null;
-		}
-		echo '<input type="checkbox" name ="' . self::PREFIX . 'options[twitter_send]" id="' . self::PREFIX . 'options[twitter_send]" value="yes" ' . $checked . '>';
-	} // End twitter_send_callback()
-	
-	// Twitter syntax
-	function twitter_publish_syntax_callback() {
-		echo '<input type="text" name="' . self::PREFIX . 'options[twitter_publish_syntax]" id="' . self::PREFIX . 'options[twitter_publish_syntax]" value="' . $this->options['twitter_publish_syntax'] . '" size=40><br />';
-		echo '<span class="description">Available tags: {{title}}, {{url}}</span>';
-	} // End twitter_publish_syntax_callback()
-	
-	// Twitter schedule
-	function twitter_schedule_callback() {
-		// Set up input field for number of additional tweets to send
-		$numposts = '<input type="text" name="' . self::PREFIX . 'options[twitter_post_number]" id="' . self::PREFIX . 'options[twitter_post_number]" value="' . $this->options['twitter_post_number'] . '" size=1>';
-		
-		// Set up input field for interval (in hours) between tweets
-		$interval = '<input type="text" name="' . self::PREFIX . 'options[twitter_post_interval]" id="' . self::PREFIX . 'options[twitter_post_interval]" value="' . $this->options['twitter_post_interval'] . '" size=1>';
-		
-		// Show the options fields with explanation
-		echo '<p>Send ' . $numposts . ' additional tweets, spaced ' . $interval . ' hours apart</p>';
-		echo '<span class="description">A tweet will automatically be sent when a post is published. This setting lets you schedule follow-up tweets to be sent by Buffer.</span>';
-	} // End twitter_schedule_callback()
-	
-	// Enable Facebook
-	function fb_send_callback() {
-		// Determine whether checkbox should be checked
-		if ( $this->options['fb_send'] == 'yes' ) {
-			$checked = 'checked';
-		}
-		else {
-			$checked = null;
-		}
-		echo '<input type="checkbox" name ="' . self::PREFIX . 'options[fb_send]" id="' . self::PREFIX . 'options[fb_send]" value="yes" ' . $checked . '>';
-	} // End fb_send_callback()
-	
-	// Facebook syntax
-	function fb_publish_syntax_callback() {
-		echo '<input type="text" name="' . self::PREFIX . 'options[fb_publish_syntax]" id="' . self::PREFIX . 'options[fb_publish_syntax]" value="' . $this->options['fb_publish_syntax'] . '" size=40><br />';
-		echo '<span class="description">Available tags: {{title}}, {{url}}</span>';
-	} // End fb_publish_syntax_callback()
-	
-	// Enable LinkedIn
-	function linkedin_send_callback() {
-		// Determine whether checkbox should be checked
-		if ( $this->options['linkedin_send'] == 'yes' ) {
-			$checked = 'checked';
-		}
-		else {
-			$checked = null;
-		}
-		echo '<input type="checkbox" name ="' . self::PREFIX . 'options[linkedin_send]" id="' . self::PREFIX . 'options[linkedin_send]" value="yes" ' . $checked . '>';
-	} // End linkedin_send_callback()
-	
-	// LinkedIn syntax
-	function linkedin_publish_syntax_callback() {
-		echo '<input type="text" name="' . self::PREFIX . 'options[linkedin_publish_syntax]" id="' . self::PREFIX . 'options[linkedin_publish_syntax]" value="' . $this->options['linkedin_publish_syntax'] . '" size=40><br />';
-		echo '<span class="description">Available tags: {{title}}, {{url}}</span>';
-	} // End linkedin_publish_syntax_callback()
 	/* End plugin options callbacks */
 	
 	// Validate plugin options
@@ -390,8 +216,8 @@ class Admin extends Buffer {
 			}
 		}
 		
-		// Access token will only be saved if Client ID and Client Secret are both already saved
-		if ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) ) {
+		// Access token will only be saved if Client ID and Client Secret are both already saved, but no access token is saved
+		if ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) && empty( $this->options['site_access_token'] ) ) {
 			// Make sure a value is provided for the access token
 			if ( ! empty( $input['site_access_token'] ) ) {
 				// Only perform the validation tasks if the value has changed from what's in the database
@@ -443,137 +269,28 @@ class Admin extends Buffer {
 			}
 		}
 		
-		// All other options require application to be fully authenticated, and no validation or assigment will be done without that
-		if ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) && ! empty( $this->options['site_access_token'] ) ) {
-			/* Twitter options */
-			// Check the value for enabling Twitter
-			if ( $input['twitter_send'] == 'yes' || $input['twitter_send'] == null ) {
-				$options['twitter_send'] = $input['twitter_send'];
-			}
-			
-			// Check the Twitter syntax
-			// Verify that Twitter is enabled, otherwise we'll ignore the syntax field
-			if ( $input['twitter_send'] == 'yes' ) {
-				if ( $this->validate_syntax( $input['twitter_publish_syntax'] ) ) {
-					// If the syntax provided is valid, use it
-					$options['twitter_publish_syntax'] = $input['twitter_publish_syntax'];
-				}
-				// If not, throw an error
-				else {
-					add_settings_error (
-						self::ID, // Setting to which the error applies
-						'twitter-publish-syntax', // Identify the option throwing the error
-						'Hang on a second. The Twitter syntax you provided doesn\'t look quite right. Make sure everything is entered properly, and try it again.', // Error message
-						'error' // The type of message it is
-					);
-				}
-			}
-			
-			// Check the number of additional tweets
-			if ( is_numeric( $input['twitter_post_number'] ) && 0 <= $input['twitter_post_number'] ) {
-				$options['twitter_post_number'] = $input['twitter_post_number'];
-			}
-			else {
-				add_settings_error (
-					self::ID, // Setting to which the error applies
-					'twitter-post-number', // Identify the option throwing the error
-					'You provided an invalid value for the number of additional tweets to send. You must provide a number greater than or equal to 0.', // Error message
-					'error' // The type of message it is
-				);
-			}
-			
-			// Check the interval between tweets
-			// Only require this field if twitter_post_number is greater than 0
-			if ( $input['twitter_post_number'] && ( is_numeric( $input['twitter_post_number'] ) && $input['twitter_post_number'] > 0 ) ) {
-				if ( $input['twitter_post_interval'] && ( is_numeric( $input['twitter_post_interval'] ) && 1 <= $input['twitter_post_interval'] ) ) {
-					$options['twitter_post_interval'] = $input['twitter_post_interval'];
-				}
-				else {
-					add_settings_error (
-						self::ID, // Setting to which the error applies
-						'twitter-post-interval', // Identify the option throwing the error
-						'You provided an invalid value for the interval between tweets. You must provide a number greater than 0.', // Error message
-						'error' // The type of message it is
-					);
-				}
-			}
-			// If twitter_post_number is set to 0, set this option to null
-			else {
-				$options['twitter_post_interval'] = null;
-			}
-			/* End Twitter options */
-			
-			/* Facebook options */
-			// Check the value for enabling Facebook
-			if ( $input['fb_send'] == 'yes' || $input['fb_send'] == null ) {
-				$options['fb_send'] = $input['fb_send'];
-			}
-			
-			// Check the Facebook syntax
-			// Verify that Facebook is enabled, otherwise we'll ignore the syntax field
-			if ( $input['fb_send'] == 'yes' ) {
-				if ( $this->validate_syntax( $input['fb_publish_syntax'] ) ) {
-					// If the syntax provided is valid, use it
-					$options['fb_publish_syntax'] = $input['fb_publish_syntax'];
-				}
-				// If not, throw an error
-				else {
-					add_settings_error (
-						self::ID, // Setting to which the error applies
-						'fb-publish-syntax', // Identify the option throwing the error
-						'The post format you provided for Facebook is invalid.', // Error message
-						'error' // The type of message it is
-					);
-				}
-			}
-			/* End Facebook options */
-			
-			/* LinkedIn options */
-			// Check the value for enabling LinkedIn
-			if ( $input['linkedin_send'] == 'yes' || $input['linkedin_send'] == null ) {
-				$options['linkedin_send'] = $input['linkedin_send'];
-			}
-			
-			// Check the LinkedIn syntax
-			// Verify that LinkedIn is enabled, otherwise we'll ignore the syntax field
-			if ( $input['linkedin_send'] == 'yes' ) {
-				if ( $this->validate_syntax( $input['linkedin_publish_syntax'] ) ) {
-					// If the syntax provided is valid, use it
-					$options['linkedin_publish_syntax'] = $input['linkedin_publish_syntax'];
-				}
-				// If not, throw an error
-				else {
-					add_settings_error (
-						self::ID, // Setting to which the error applies
-						'linkedin-publish-syntax', // Identify the option throwing the error
-						'The post format you provided for LinkedIn is invalid.', // Error message
-						'error' // The type of message it is
-					);
-				}
-			}
-			/* End LinkedIn options */
-		}
-		
+		// Return the validated options
 		return $options;
 	} // End options_validate()
-	
-	// Validate message syntax (NEEDS SYNTAX CHECK ADDED)
-	function validate_syntax( $input ) {
-		// Check that the service is enabled
-		if ( $input ) {
-			// If the service is enabled, and proper syntax is used, return the syntax
-			return TRUE;
-		}
-		else {
-			return FALSE;
-		}
-	}
 	/*
 	===== End Admin Plugin Options =====
 	*/
 	
 	/*
-	===== Admin initialization =====
+	===== Admin Notices =====
+	*/
+	// If the plugin is not fully authenticated and the plugin options page is not the current page, display an admin notice
+	function notice_not_auth() {
+		if ( ! $this->api->is_site_authenticated() && ( ! isset( $_REQUEST['page'] ) || $_REQUEST['page'] != self::ID ) ) {
+			echo '<div class="error"><p><strong>Hang on a second! <a href="' . $this->api->optionsurl() . '">' . self::NAME . '</a> needs to be connected to Buffer.</strong></p></div>';
+		}
+	} // End notice_not_auth()
+	/*
+	===== End Admin Notices =====
+	*/
+	
+	/*
+	===== Admin Initialization =====
 	*/
 	// Initialize the admin class
 	protected function admin_initialize() {
@@ -620,14 +337,7 @@ class Admin extends Buffer {
 	 		'client_secret' => null, // Application client secret
 	 		'site_access_token' => null, // Access token, for the Buffer account used to publish posts globally
 	 		'site_user_id' => null, // Buffer user ID for the account that will be used for site-level Buffer messages
-	 		'twitter_send' => null, // Don't enable Twitter by default
-	 		'twitter_publish_syntax' => 'New Post: {{title}} {{url}}', // Default syntax of Twitter messages
-	 		'twitter_post_number' => 0, // Number of tweets to schedule
-	 		'twitter_post_interval' => null, // Interval between scheduled tweets
-	 		'fb_send' => null, // Don't enable Facebook by default
-	 		'fb_publish_syntax' => 'New Post: {{title}} {{url}}', // Default syntax of Facebook messages
-	 		'linkedin_send' => null, // Don't enable LinkedIn by default
-	 		'linkedin_publish_syntax' => 'New Post: {{title}} {{url}}', // Default syntax of LinkedIn messages
+	 		'profiles' => null, // Buffer social media profiles associated with the site-wide account
 	 		'dbversion' => self::VERSION, // Current plugin version
 	 	);
 	 	

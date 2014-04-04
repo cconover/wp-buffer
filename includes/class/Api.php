@@ -40,11 +40,11 @@ class Api extends Buffer {
 	
 	/*
 	Buffer API request
-	All other plugin API calls use this method to connect to the Buffer API
+	All other plugin API calls (except OAuth) use this method to connect to the Buffer API
 	@param string $access_token Buffer access token
 	@param string $command Buffer API endpoint
 	@param string $method HTTP method to use for the request (default: GET)
-	@param array $args WordPress HTTP API arguments (default: empty)
+	@param array $args WordPress HTTP API arguments (default: empty; use WordPress defaults)
 	*/
 	function request ( $access_token, $command, $method = 'get', $args = array() ) {
 		// Format command for the API request
@@ -64,7 +64,7 @@ class Api extends Buffer {
 			return $request;
 		}
 		
-		// Return the JSON-decoded Buffer API response
+		// Return the JSON-decoded Buffer API response as an associative array
 		return json_decode( $request['body'], true );
 	} // End request()
 	
@@ -72,7 +72,7 @@ class Api extends Buffer {
 	// Make the request to the Buffer API for OAuth authorization
 	public function buffer_oauth_connect() {
 		// Create the 'Authorize with Buffer' button
-		$oauth_button = '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $this->optionsurl( true, array( 'noheader' => 'true' ) ) . '&response_type=code">Authenticate Me!</a>';
+		$oauth_button = '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $this->optionsurl( true ) . '&response_type=code">Authenticate Me!</a>';
 		
 		// See whether Buffer has replied with a code
 		if ( ! empty( $_REQUEST['code'] ) ) {
@@ -84,7 +84,7 @@ class Api extends Buffer {
 				'body' => array(
 					'client_id' => $this->options['client_id'], // Application client ID
 					'client_secret' => $this->options['client_secret'], // Application client secret
-					'redirect_uri' => $this->optionsurl( false, array( 'noheader' => 'true' ) ), // The callback endpoint for the plugin
+					'redirect_uri' => $this->optionsurl(), // The callback endpoint for the plugin
 					'code' => $code, // The temporary code we just got from Buffer
 					'grant_type' => 'authorization_code' // We want back a long-term access token
 				)
@@ -119,8 +119,8 @@ class Api extends Buffer {
 						// Save the newly acquired information to the database
 						update_option( self::PREFIX . 'options', $options );
 					
-						// Redirect the user back to the plugin options page
-						wp_redirect( $this->optionsurl() );
+						// Show a link back to the plugin options page
+						echo '<a href="' . $this->optionsurl() . '">Set up plugin options</a>';
 					}
 					// If we get an error, notify the user
 					elseif ( ! empty( $user['code'] ) ) {
@@ -135,7 +135,7 @@ class Api extends Buffer {
 		}
 		// If the API returns an error, handle that
 		elseif ( ! empty( $_REQUEST['error'] ) ) {
-			echo '<div class="error settings-error"><p><strong>Uh oh! Buffer replied with an error. Let\'s try again!</strong></p></div>' . $oauth_button;
+			echo '<div class="error settings-error"><p><strong>Uh oh! Buffer replied with an error. Let\'s try again!<br /><em>API Error: ' . $_REQUEST['error'] . '</em></strong></p></div>' . $oauth_button;
 		}
 		else {
 			echo $oauth_button;
@@ -144,6 +144,9 @@ class Api extends Buffer {
 	
 	// Disconnect the OAuth authentication from Buffer
 	public function buffer_oauth_disconnect() {
+		// Button to show for disconnecting
+		$disconnect_button = '<a class="button" href="' . $this->optionsurl( false, array( 'buffer_oauth_disconnect' => 'yes' ) ) . '">Disconnect from Buffer</a>';
+		
 		// Check whether a request to disconnect has been made
 		if ( isset( $_REQUEST['buffer_oauth_disconnect'] ) ) {
 			// Set a local variable for the class options property
@@ -153,16 +156,32 @@ class Api extends Buffer {
 			$options['site_access_token'] = null;
 			
 			// Update the plugin options with the newly empty site access token
-			update_option( self::PREFIX . 'options', $options );
-			
-			// Redirect the user back to the plugin options page
-			wp_redirect( $this->optionsurl() );
+			if ( update_option( self::PREFIX . 'options', $options ) ) {
+				// Provide a link back to the options page
+				echo '<div class="updated"><p><strong>Success!</strong> Let\'s go back to the plugin options.</p></div><a href="' . $this->optionsurl() . '">Set up plugin options</a>';
+			}
+			// If updating fails, notify the user
+			else {
+				echo '<div class="error settings-error"><p><strong>Hmmm. For some reason we couldn\'t remove your Buffer credentials from this plugin. Let\'s give it another shot!</strong></p></div>' . $disconnect_button;
+			}
 		}
 		// If no request for disconnect has been made, display a button for disconnecting
 		else {
-			echo '<a class="button" href="' . $this->optionsurl( false, array( 'buffer_oauth_disconnect' => 'yes', 'noheader' => 'true' ) ) . '">Disconnect</a>';
+			echo $disconnect_button;
 		}
-	}
+	} // End buffer_oauth_disconnect()
+	
+	// Check whether all authentication fields are present
+	public function is_site_authenticated() {
+		// If all the fields necessary to authenticate with Buffer have values, return true
+		if ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) && ! empty( $this->options['site_access_token'] ) ) {
+			return true;
+		}
+		// If not, return false
+		else {
+			return false;
+		}
+	} // End is_site_authenticated()
 	/* End Authentication Methods */
 	
 	/* User Methods */

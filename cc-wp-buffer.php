@@ -41,7 +41,7 @@ class Buffer {
 		
 		/* Admin elements (only loaded if in admin) */
 		if ( is_admin() ) {
-			require_once( $this->pluginpath . '/admin/' . self::ID . '-admin.php' ); // Require the file containing the plugin admin class
+			require_once( $this->pluginpath . '/admin/' . self::ID . '-admin.php' ); // Require the file containing the plugin's admin class
 			$admin = new \cconover\buffer\Admin; // Create new admin object
 			
 			// Admin hooks and filters to be loaded by the main plugin class
@@ -75,7 +75,7 @@ class Buffer {
 	}
 	
 	// Get plugin options from the database
-	function get_options() {
+	protected function get_options() {
 		$this->options = get_option( self::PREFIX . 'options' );
 	}
 	/* End plugin initialization methods */
