@@ -65,12 +65,12 @@ class Buffer {
 		$this->pluginfile = __FILE__; // Plugin file path
 		
 		// Set path to class includes directory
-		$this->classpath = $this->pluginpath . '/includes/class/';
+		$this->includespath = $this->pluginpath . '/includes/';
 	}
 	
 	// Initialize the plugin API
 	protected function api_initialize() {
-		require_once( $this->classpath . 'Api.php' );
+		require_once( $this->includespath . 'class-api.php' );
 		$this->api = new \cconover\buffer\Api;
 	}
 	
