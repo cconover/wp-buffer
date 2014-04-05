@@ -82,7 +82,7 @@ class Admin extends Buffer {
 		);
 		
 		// If the plugin is authenticated and we're on the plugin options page, retrieve the profiles in the Buffer account
-		if ( $this->api->is_site_authenticated() && ( isset( $_REQUEST['page'] ) && $_REQUEST['page'] == self::ID ) ) {
+		if ( $this->api->is_site_authenticated() && ( isset( $_REQUEST['page'] ) && self::ID == $_REQUEST['page'] ) ) {
 			$this->profile = $this->api->get_profile( $this->options['site_access_token'] );
 			
 			// If WordPress returns an error, notify the user
@@ -163,9 +163,7 @@ class Admin extends Buffer {
 	
 	// Client ID
 	function client_id_callback() {
-		?>
-		<input type="text" name="<?php echo self::PREFIX; ?>options[client_id]" id="<?php echo self::PREFIX; ?>options_client_id" value="<?php echo $this->options['client_id']; ?>" size=40>
-		<?php
+		echo '<input type="text" name="' . self::PREFIX . 'options[client_id]" id="' . self::PREFIX . 'options_client_id" value="' . $this->options['client_id'] . '" size=40>';
 	} // End client_id_callback()
 	
 	// Client secret
@@ -281,7 +279,7 @@ class Admin extends Buffer {
 	*/
 	// If the plugin is not fully authenticated and the plugin options page is not the current page, display an admin notice
 	function notice_not_auth() {
-		if ( ! $this->api->is_site_authenticated() && ( ! isset( $_REQUEST['page'] ) || $_REQUEST['page'] != self::ID ) ) {
+		if ( ! $this->api->is_site_authenticated() && ( ! isset( $_REQUEST['page'] ) || self::ID != $_REQUEST['page'] ) ) {
 			echo '<div class="error"><p><strong>Hang on a second! <a href="' . $this->api->optionsurl() . '">' . self::NAME . '</a> needs to be connected to Buffer.</strong></p></div>';
 		}
 	} // End notice_not_auth()
@@ -337,7 +335,6 @@ class Admin extends Buffer {
 	 		'client_secret' => null, // Application client secret
 	 		'site_access_token' => null, // Access token, for the Buffer account used to publish posts globally
 	 		'site_user_id' => null, // Buffer user ID for the account that will be used for site-level Buffer messages
-	 		'profiles' => null, // Buffer social media profiles associated with the site-wide account
 	 		'dbversion' => self::VERSION, // Current plugin version
 	 	);
 	 	
