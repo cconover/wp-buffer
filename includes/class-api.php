@@ -31,7 +31,7 @@ class Api extends Buffer {
 		}
 		
 		// If $encode is true, encode $url for use in a URL
-		if ( $encode == true ) {
+		if ( true == $encode ) {
 			$url = urlencode( $url );
 		}
 		
@@ -42,21 +42,21 @@ class Api extends Buffer {
 	Buffer API request
 	All other plugin API calls (except OAuth) use this method to connect to the Buffer API
 	@param string $access_token Buffer access token
-	@param string $command Buffer API endpoint
+	@param string $endpoint Buffer API endpoint
 	@param string $method HTTP method to use for the request (default: GET)
 	@param array $args WordPress HTTP API arguments (default: empty; use WordPress defaults)
 	*/
-	function request ( $access_token, $command, $method = 'get', $args = array() ) {
+	function request ( $access_token, $endpoint, $method = 'get', $args = array() ) {
 		// Format command for the API request
-		$command = $command . '.json';
+		$endpoint = $endpoint . '.json';
 		
 		// If the HTTP method is GET, do this
-		if ( $method == 'get' ) {
-			$request = wp_remote_get( 'https://api.bufferapp.com/1/' . $command . '?access_token=' . $access_token, $args );
+		if ( 'get' == $method ) {
+			$request = wp_remote_get( 'https://api.bufferapp.com/1/' . $endpoint . '?access_token=' . $access_token, $args );
 		}
 		// If the HTTP method is POST, do this
-		elseif ( $method == 'post' ) {
-			$request = wp_remote_post( 'https://api.bufferapp.com/1/' . $command . '?access_token=' . $access_token, $args );
+		elseif ( 'post' == $method ) {
+			$request = wp_remote_post( 'https://api.bufferapp.com/1/' . $endpoint . '?access_token=' . $access_token, $args );
 		}
 		
 		// Check whether the result is a WordPress error
@@ -69,8 +69,11 @@ class Api extends Buffer {
 	} // End request()
 	
 	/* Authentication Methods */
-	// Make the request to the Buffer API for OAuth authorization
-	public function buffer_oauth_connect() {
+	/*
+	Set up OAuth authentication with Buffer
+	@param integer $userid the ID of the WordPress user. Defaults to NULL, meaning this is for the plugin's global options
+	*/
+	public function buffer_oauth_connect( $userid = null ) {
 		// Create the 'Authorize with Buffer' button
 		$oauth_button = '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $this->optionsurl( true ) . '&response_type=code">Authenticate Me!</a>';
 		
@@ -99,7 +102,7 @@ class Api extends Buffer {
 			}
 			// If there is no WordPress error, we'll have gotten a reply from Buffer
 			else {
-				// Decode the JSON data returned by Buffer
+				// Decode the JSON data returned by Buffer as an associative array
 				$request = json_decode( $request['body'], true );
 				
 				// If Buffer returned an access token, process it
@@ -124,26 +127,29 @@ class Api extends Buffer {
 					}
 					// If we get an error, notify the user
 					elseif ( ! empty( $user['code'] ) ) {
-						echo '<div class="error settings-error"><p><strong>Hmmm, we weren\'t able to get your account information from Buffer. Let\'s try again!<br /><em>API Error: ' . $user['code'] . ' ' . $user['error'] . '</em></strong></p></div>' . $oauth_button;
+						echo '<div class="error settings-error"><p><strong>Hmmm, we weren\'t able to get your account information from Buffer. Let\'s try again!</strong><br /><em>API Error: ' . $user['code'] . ' ' . $user['error'] . '</em></p></div>' . $oauth_button;
 					}
 				}
 				// If Buffer replied but not with an access token, something went wrong and we need to notify the user
 				else {
-					echo '<div class="error settings-error"><p><strong>Nuts! We didn\'t get authorization from Buffer. Let\'s try it again!<br /><em>API Error: ' . $request['error'] . '</em></strong></p></div>' . $oauth_button;
+					echo '<div class="error settings-error"><p><strong>Nuts! We didn\'t get authorization from Buffer. Let\'s try it again!</strong><br /><em>API Error: ' . $request['error'] . '</em></p></div>' . $oauth_button;
 				}
 			}
 		}
 		// If the API returns an error, handle that
 		elseif ( ! empty( $_REQUEST['error'] ) ) {
-			echo '<div class="error settings-error"><p><strong>Uh oh! Buffer replied with an error. Let\'s try again!<br /><em>API Error: ' . $_REQUEST['error'] . '</em></strong></p></div>' . $oauth_button;
+			echo '<div class="error settings-error"><p><strong>Uh oh! Buffer replied with an error. Let\'s try again!</strong><br /><em>API Error: ' . $_REQUEST['error'] . '</em></p></div>' . $oauth_button;
 		}
 		else {
 			echo $oauth_button;
 		}
 	} // End buffer_oauth_connect()
 	
-	// Disconnect the OAuth authentication from Buffer
-	public function buffer_oauth_disconnect() {
+	/*
+	Remove the OAuth credentials
+	@param integer $userid the ID of the WordPress user. Defaults to NULL, meaning this is for the plugin's global options
+	*/
+	public function buffer_oauth_disconnect( $userid = null ) {
 		// Button to show for disconnecting
 		$disconnect_button = '<a class="button" href="' . $this->optionsurl( false, array( 'buffer_oauth_disconnect' => 'yes' ) ) . '">Disconnect from Buffer</a>';
 		
@@ -152,17 +158,18 @@ class Api extends Buffer {
 			// Set a local variable for the class options property
 			$options = $this->options;
 			
-			// Remove the site access token
+			// Remove the site access token and user ID
 			$options['site_access_token'] = null;
+			$options['site_user_id'] = null;
 			
 			// Update the plugin options with the newly empty site access token
 			if ( update_option( self::PREFIX . 'options', $options ) ) {
 				// Provide a link back to the options page
-				echo '<div class="updated"><p><strong>Success!</strong> Let\'s go back to the plugin options.</p></div><a href="' . $this->optionsurl() . '">Set up plugin options</a>';
+				echo '<div class="updated"><p><strong>Success! Let\'s go back to the plugin options.</strong></p></div><a href="' . $this->optionsurl() . '">Set up plugin options</a>';
 			}
 			// If updating fails, notify the user
 			else {
-				echo '<div class="error settings-error"><p><strong>Hmmm. For some reason we couldn\'t remove your Buffer credentials from this plugin. Let\'s give it another shot!</strong></p></div>' . $disconnect_button;
+				echo '<div class="error settings-error"><p><strong>Hmmm. For some reason we couldn\'t disconnect from Buffer. Let\'s give it another shot!</strong></p></div>' . $disconnect_button;
 			}
 		}
 		// If no request for disconnect has been made, display a button for disconnecting
@@ -188,10 +195,10 @@ class Api extends Buffer {
 	// Validate a Buffer user
 	public function get_user( $access_token ) {
 		// We'll be asking the Buffer API for information about the specified user
-		$command = 'user';
+		$endpoint = 'user';
 			
 		// Make the request to the Buffer API
-		$result = $this->request( $access_token, $command );
+		$result = $this->request( $access_token, $endpoint );
 			
 		// Return the response from the Buffer API
 		return $result;
@@ -202,20 +209,20 @@ class Api extends Buffer {
 	/**
 	 * Get a profile (or all profiles) for the specified user account
 	 * @param string $access_token the access token for the account
-	 * @param string $profile the profile to be retrieve (defaults to all profiles associated with the account)
+	 * @param string $profile the profile to be retrieve (defaults to NULL, resulting in all profiles associated with the account)
 	 **/
 	public function get_profile( $access_token, $profile = null ) {
 		// If a specific profile is specified, use the Buffer endpoint for that profile
 		if ( ! empty( $profile ) ) {
-			$command = 'profiles/' . $profile;
+			$endpoint = 'profiles/' . $profile;
 		}
 		// If no profile is specified, get all the profiles for the account
 		else {
-			$command = 'profiles';
+			$endpoint = 'profiles';
 		}
 		
 		// Make the request to the Buffer API
-		$result = $this->request( $access_token, $command );
+		$result = $this->request( $access_token, $endpoint );
 		
 		// Return the reponse
 		return $result;
