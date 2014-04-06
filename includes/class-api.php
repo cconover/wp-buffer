@@ -127,18 +127,18 @@ class Api extends Buffer {
 					}
 					// If we get an error, notify the user
 					elseif ( ! empty( $user['code'] ) ) {
-						echo '<div class="error settings-error"><p><strong>Hmmm, we weren\'t able to get your account information from Buffer. Let\'s try again!</strong><br /><em>API Error: ' . $user['code'] . ' ' . $user['error'] . '</em></p></div>' . $oauth_button;
+						echo '<div class="error settings-error"><p><strong>Hmmm, we weren\'t able to get your account information from Buffer. Let\'s try again!</strong><br><em>API Error: ' . $user['code'] . ' ' . $user['error'] . '</em></p></div>' . $oauth_button;
 					}
 				}
 				// If Buffer replied but not with an access token, something went wrong and we need to notify the user
 				else {
-					echo '<div class="error settings-error"><p><strong>Nuts! We didn\'t get authorization from Buffer. Let\'s try it again!</strong><br /><em>API Error: ' . $request['error'] . '</em></p></div>' . $oauth_button;
+					echo '<div class="error settings-error"><p><strong>Nuts! We didn\'t get authorization from Buffer. Let\'s try it again!</strong><br><em>API Error: ' . $request['error'] . '</em></p></div>' . $oauth_button;
 				}
 			}
 		}
 		// If the API returns an error, handle that
 		elseif ( ! empty( $_REQUEST['error'] ) ) {
-			echo '<div class="error settings-error"><p><strong>Uh oh! Buffer replied with an error. Let\'s try again!</strong><br /><em>API Error: ' . $_REQUEST['error'] . '</em></p></div>' . $oauth_button;
+			echo '<div class="error settings-error"><p><strong>Uh oh! Buffer replied with an error. Let\'s try again!</strong><br><em>API Error: ' . $_REQUEST['error'] . '</em></p></div>' . $oauth_button;
 		}
 		else {
 			echo $oauth_button;

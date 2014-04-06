@@ -81,22 +81,35 @@ class Admin extends Buffer {
 			array( &$this, 'options_validate' ) // The callback method to validate plugin options
 		);
 		
-		// If the plugin is authenticated and we're on the plugin options page, retrieve the profiles in the Buffer account
+		// Load plugin options for Buffer authentication
+		$this->auth_options();
+		
+		/*
+		Buffer Profiles
+		Buffer uses profiles to store the social media accounts attached to a Buffer account. We will retrieve all
+		social media profiles every time the plugin options page is loaded. This will only happen when the following
+		conditions are met:
+		- Plugin is fully authenticated with Buffer
+		- The plugin options page is being displayed
+		If the profiles are successfully retrieved, we can display the Buffer options. If not, we'll throw an error
+		and no Buffer options will be shown, since we have no data from which to create them.
+		*/
 		if ( $this->api->is_site_authenticated() && ( isset( $_REQUEST['page'] ) && self::ID == $_REQUEST['page'] ) ) {
 			$this->profile = $this->api->get_profile( $this->options['site_access_token'] );
 			
 			// If WordPress returns an error, notify the user
 			if ( is_wp_error( $this->profile ) ) {
-				echo '<div class="error settings-error"><p><strong>Uh oh! We had a problem getting the social media accounts tied to your Buffer account. Let\'s try again.</strong><br /><em>WordPress Error: ' . $this->profile->get_error_message() . '</em></p></div>';
+				echo '<div class="error settings-error"><p><strong>Uh oh! We had a problem getting the social media accounts tied to your Buffer account. Let\'s try again.</strong><br><em>WordPress Error: ' . $this->profile->get_error_message() . '</em></p></div>';
 			}
 			// If Buffer returns an error, notify the user
 			elseif ( ! empty( $this->profile['code'] ) ) {
-				echo '<div class="error settings-error"><p><strong>Uh oh! We had a problem getting the social media accounts tied to your Buffer account. Let\'s try again.</strong><br /><em>API Error: ' . $this->profile['code'] . ' ' . $this->profile['error'] . '</em></p></div>';
+				echo '<div class="error settings-error"><p><strong>Uh oh! We had a problem getting the social media accounts tied to your Buffer account. Let\'s try again.</strong><br><em>API Error: ' . $this->profile['code'] . ' ' . $this->profile['error'] . '</em></p></div>';
+			}
+			// Otherwise the profile data is valid, so we can add the Buffer options to the page
+			else {
+				$this->buffer_options();
 			}
 		}
-		
-		// Load plugin options for authorization
-		$this->auth_options();
 	} // End options_init()
 	
 	// Options for Buffer authorization
@@ -142,6 +155,36 @@ class Admin extends Buffer {
 		}
 	} // End auth_options()
 	
+	/* Buffer Options */
+	// Generate plugin options fields from profiles
+	function buffer_options() {
+		// Iterate through each profile
+		foreach ( $this->profile as $profile ) {
+			// Iterate through the elements of each profile
+			foreach ( $profile as $element => $value ) {
+				// Add a settings section for each type of social network
+				add_settings_section(
+					$profile['service'], // Name of the section
+					$profile['formatted_service'], // Title of the section, displayed on the options page
+					null, // Callback for the section - unneeded for this plugin
+					self::ID // Page ID for the options page
+				);
+				
+				// Create a settings field to enable or disable each social media profile
+				add_settings_field(
+					$profile['id'], // Field ID (use the profile ID from Buffer)
+					'<img class="buffer_profile_avatar" src="' . $profile['avatar_https'] . '" alt="Avatar for ' . $profile['formatted_username'] . '">' . $profile['formatted_username'], // Field title/label displayed to the user (use the formatted username from Buffer)
+					array( &$this, 'buffer_settings_field_callback' ), // Callback method to display the option field
+					self::ID, // Page ID for the options page
+					$profile['service'], // Settings section in which to display the field
+					$profile // Send all the profile details to the callback method as arguments
+				);
+			}
+		}
+	} // End buffer_options()
+	
+	/* End Buffer Options */
+	
 	/* Plugin options callbacks */
 	// Authorization section
 	function auth_callback() {
@@ -156,7 +199,7 @@ class Admin extends Buffer {
 		// If they have been saved, check whether there's an access token. If not, inform the user.
 		else {
 			if ( empty( $this->options['site_access_token'] ) && empty( $_REQUEST['code'] ) && empty( $_REQUEST['error'] ) ) {
-				echo '<div class="updated settings-error"><p><strong>You\'re almost done!</strong><br />Click the button below to authenticate this site with your Buffer account.</p></div>';
+				echo '<div class="updated settings-error"><p><strong>You\'re almost done!</strong><br>Click the button below to authenticate this site with your Buffer account.</p></div>';
 			}
 		}
 	} // End auth_callback()
@@ -189,6 +232,25 @@ class Admin extends Buffer {
 			$this->api->buffer_oauth_disconnect();
 		}
 	} // End client_id_callback()
+	
+	// Callback for dynamically generated Buffer settings fields
+	// @param array $args arguments passed to the callback from the settings field
+	function buffer_settings_field_callback( $args ) {
+		// If this profile is enabled in plugin options, check the box
+		if ( ! empty( $this->options['profiles'][$args['id']]['active'] ) ) {
+			$checked = 'checked';
+		}
+		// If not, leave the box unchecked
+		else {
+			$checked = null;
+		}
+		
+		// Create checkbox for enabling publishing to this service
+		echo '<p>Enabled? <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_active" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][active]" type="checkbox" value="yes" ' . $checked . '></p>';
+		
+		// Create text input for post syntax
+		echo '<p>Syntax <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_syntax" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][syntax]" type="text" value="' . $this->options['profiles'][$args['id']]['syntax'] . '" size=40></p>';
+	} // End buffer_settings_field_callback()
 	/* End plugin options callbacks */
 	
 	// Validate plugin options
@@ -267,6 +329,17 @@ class Admin extends Buffer {
 			}
 		}
 		
+		// If the site is fully authenticated, process the rest of the plugin options
+		if ( $this->api->is_site_authenticated() ) {
+			// Set local variable for 'profiles' input
+			$profiles = $input['profiles'];
+			
+			// Sanitize the values of the 'enabled' checkboxes
+			
+			// Save profiles options
+			$options['profiles'] = $profiles;
+		}
+		
 		// Return the validated options
 		return $options;
 	} // End options_validate()
@@ -335,6 +408,7 @@ class Admin extends Buffer {
 	 		'client_secret' => null, // Application client secret
 	 		'site_access_token' => null, // Access token, for the Buffer account used to publish posts globally
 	 		'site_user_id' => null, // Buffer user ID for the account that will be used for site-level Buffer messages
+	 		'profiles' => null, // Social media profile settings
 	 		'dbversion' => self::VERSION, // Current plugin version
 	 	);
 	 	
