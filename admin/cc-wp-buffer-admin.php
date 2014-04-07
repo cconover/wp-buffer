@@ -347,6 +347,16 @@ class Admin extends Buffer {
 			$profiles = $input['profiles'];
 			
 			// Sanitize the values of the 'enabled' checkboxes
+			foreach ( $profiles as $profile ) {
+				foreach ( $profile as $key => $value ) {
+					if ( ! empty( $profile['active'] ) ) {
+						$profile['active'] = 'yes';
+					}
+					else {
+						$profile['active'] = null;
+					}
+				}
+			}
 			
 			// Save profiles options
 			$options['profiles'] = $profiles;
