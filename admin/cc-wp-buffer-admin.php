@@ -145,9 +145,21 @@ class Admin extends Buffer {
 		
 		// Buffer access token to be used globally for the site (only show if Client ID and Client Secret are saved)
 		if ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) ) {
+			// If no access token is saved in the database, display a static field label
+			if ( empty( $this->options['site_access_token'] ) ) {
+				$site_access_token_field_label = 'Connect to Buffer';
+			}
+			// If it is set, display the name of the user associated with the account
+			else {
+				$site_access_token_user = $this->api->get_user( $this->options['site_access_token'] );
+				
+				$site_access_token_field_label = $site_access_token_user['name'];
+			}
+			
+			// Add the settings field
 			add_settings_field(
 				'site_access_token', // Field ID
-				'Connect with Buffer', // Field title/label, displayed to the user
+				$site_access_token_field_label, // Field title/label, displayed to the user
 				array( &$this, 'site_access_token_callback' ), // Callback method to display the option field
 				self::ID, // Page ID for the options page
 				'auth' // Settings section in which to display the field
@@ -177,7 +189,7 @@ class Admin extends Buffer {
 					array( &$this, 'buffer_settings_field_callback' ), // Callback method to display the option field
 					self::ID, // Page ID for the options page
 					$profile['service'], // Settings section in which to display the field
-					$profile // Send all the profile details to the callback method as arguments
+					$profile // Send all the profile details to the callback method as an argument
 				);
 			}
 		}
