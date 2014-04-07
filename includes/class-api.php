@@ -120,10 +120,10 @@ class Api extends Buffer {
 						$options['site_user_id'] = $user['id'];
 					
 						// Save the newly acquired information to the database
-						update_option( self::PREFIX . 'options', $options );
-					
-						// Show a link back to the plugin options page
-						echo '<a href="' . $this->optionsurl() . '">Set up plugin options</a>';
+						if ( update_option( self::PREFIX . 'options', $options ) ) {
+							// Show a link back to the plugin options page
+							echo '<a href="' . $this->optionsurl() . '">Set up plugin options</a>';
+						}
 					}
 					// If we get an error, notify the user
 					elseif ( ! empty( $user['code'] ) ) {
