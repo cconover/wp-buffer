@@ -38,25 +38,25 @@ class Api extends Buffer {
 		return $url;
 	} // End optionsurl()
 	
-	/*
-	Buffer API request
-	All other plugin API calls (except OAuth) use this method to connect to the Buffer API
-	@param string $access_token Buffer access token
-	@param string $endpoint Buffer API endpoint
-	@param string $method HTTP method to use for the request (default: GET)
-	@param array $args WordPress HTTP API arguments (default: empty; use WordPress defaults)
-	*/
+	/**
+	 * Buffer API request
+	 * All other plugin API calls (except OAuth) use this method to connect to the Buffer API
+	 * @param string $access_token Buffer access token
+	 * @param string $endpoint Buffer API endpoint
+	 * @param string $method HTTP method to use for the request (default: GET)
+	 * @param array $args WordPress HTTP API arguments (default: empty; use WordPress defaults)
+	 */
 	function request ( $access_token, $endpoint, $method = 'get', $args = array() ) {
-		// Format command for the API request
-		$endpoint = $endpoint . '.json';
+		// Create the full Buffer API request URI (same for GET and POST)
+		$api = 'https://api.bufferapp.com/1/' . $endpoint . '.json?access_token=' . $access_token;
 		
 		// If the HTTP method is GET, do this
 		if ( 'get' == $method ) {
-			$request = wp_remote_get( 'https://api.bufferapp.com/1/' . $endpoint . '?access_token=' . $access_token, $args );
+			$request = wp_remote_get( $api, $args );
 		}
 		// If the HTTP method is POST, do this
 		elseif ( 'post' == $method ) {
-			$request = wp_remote_post( 'https://api.bufferapp.com/1/' . $endpoint . '?access_token=' . $access_token, $args );
+			$request = wp_remote_post( $api, $args );
 		}
 		
 		// Check whether the result is a WordPress error
@@ -69,10 +69,10 @@ class Api extends Buffer {
 	} // End request()
 	
 	/* Authentication Methods */
-	/*
-	Set up OAuth authentication with Buffer
-	@param integer $userid the ID of the WordPress user. Defaults to NULL, meaning this is for the plugin's global options
-	*/
+	/**
+	 * Set up OAuth authentication with Buffer
+	 * @param integer $userid the ID of the WordPress user. Defaults to NULL, meaning this is for the plugin's global options
+	 */
 	public function buffer_oauth_connect( $userid = null ) {
 		// Create the 'Authorize with Buffer' button
 		$oauth_button = '<a class="button button-primary" href="https://bufferapp.com/oauth2/authorize?client_id=' . $this->options['client_id'] . '&redirect_uri=' . $this->optionsurl( true ) . '&response_type=code">Authenticate Me!</a>';
