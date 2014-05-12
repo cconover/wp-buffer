@@ -14,11 +14,11 @@ class Api extends Buffer {
 		$this->initialize();
 	} // End __construct()
 	
-	/*
-	Plugin URL (used for callbacks, etc.)
-	@param boolean $encode whether to encode the result for use in a URL string
-	@param array $args variables to be added to the end of the URL. Must be an associative array, using 'variable_name' => 'value' syntax
-	*/
+	/**
+	 * Plugin options URL (used for callbacks, etc.)
+	 * @param boolean $encode whether to encode the result for use in a URL string
+	 * @param array $args variables to be added to the end of the URL. Must be an associative array, using 'variable_name' => 'value' syntax
+	 */
 	public function optionsurl( $encode = false, $args = array() ) {
 		// Set the URL
 		$url = admin_url( 'options-general.php?page=' . self::ID );
@@ -40,13 +40,13 @@ class Api extends Buffer {
 	
 	/**
 	 * Buffer API request
-	 * All other plugin API calls (except OAuth) use this method to connect to the Buffer API
+	 * All plugin API calls (except OAuth) use this method to connect to the Buffer API
 	 * @param string $access_token Buffer access token
 	 * @param string $endpoint Buffer API endpoint
 	 * @param string $method HTTP method to use for the request (default: GET)
 	 * @param array $args WordPress HTTP API arguments (default: empty; use WordPress defaults)
 	 */
-	function request ( $access_token, $endpoint, $method = 'get', $args = array() ) {
+	function request( $access_token, $endpoint, $method = 'get', $args = array() ) {
 		// Create the full Buffer API request URI (same for GET and POST)
 		$api = 'https://api.bufferapp.com/1/' . $endpoint . '.json?access_token=' . $access_token;
 		
@@ -145,10 +145,10 @@ class Api extends Buffer {
 		}
 	} // End buffer_oauth_connect()
 	
-	/*
-	Remove the OAuth credentials
-	@param integer $userid the ID of the WordPress user. Defaults to NULL, meaning this is for the plugin's global options
-	*/
+	/**
+	 * Remove the OAuth credentials
+	 * @param integer $userid the ID of the WordPress user. Defaults to NULL, meaning this is for the plugin's global options
+	 */
 	public function buffer_oauth_disconnect( $userid = null ) {
 		// Button to show for disconnecting
 		$disconnect_button = '<a class="button" href="' . $this->optionsurl( false, array( 'buffer_oauth_disconnect' => 'yes' ) ) . '">Disconnect from Buffer</a>';
@@ -210,7 +210,7 @@ class Api extends Buffer {
 	 * Get a profile (or all profiles) for the specified user account
 	 * @param string $access_token the access token for the account
 	 * @param string $profile the profile to be retrieve (defaults to NULL, resulting in all profiles associated with the account)
-	 **/
+	 */
 	public function get_profile( $access_token, $profile = null ) {
 		// If a specific profile is specified, use the Buffer endpoint for that profile
 		if ( ! empty( $profile ) ) {
