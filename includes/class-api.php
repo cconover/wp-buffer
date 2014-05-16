@@ -145,39 +145,6 @@ class Api extends Buffer {
 		}
 	} // End buffer_oauth_connect()
 	
-	/**
-	 * Remove the OAuth credentials
-	 * @param integer $userid the ID of the WordPress user. Defaults to NULL, meaning this is for the plugin's global options
-	 */
-	public function buffer_oauth_disconnect( $userid = null ) {
-		// Button to show for disconnecting
-		$disconnect_button = '<a class="button" href="' . $this->optionsurl( false, array( 'buffer_oauth_disconnect' => 'yes' ) ) . '">Disconnect from Buffer</a>';
-		
-		// Check whether a request to disconnect has been made
-		if ( isset( $_REQUEST['buffer_oauth_disconnect'] ) ) {
-			// Set a local variable for the class options property
-			$options = $this->options;
-			
-			// Remove the site access token and user ID
-			$options['site_access_token'] = null;
-			$options['site_user_id'] = null;
-			
-			// Update the plugin options with the newly empty site access token
-			if ( update_option( self::PREFIX . 'options', $options ) ) {
-				// Provide a link back to the options page
-				echo '<div class="updated"><p><strong>Success! Let\'s go back to the plugin options.</strong></p></div><a href="' . $this->optionsurl() . '">Set up plugin options</a>';
-			}
-			// If updating fails, notify the user
-			else {
-				echo '<div class="error settings-error"><p><strong>Hmmm. For some reason we couldn\'t disconnect from Buffer. Let\'s give it another shot!</strong></p></div>' . $disconnect_button;
-			}
-		}
-		// If no request for disconnect has been made, display a button for disconnecting
-		else {
-			echo $disconnect_button;
-		}
-	} // End buffer_oauth_disconnect()
-	
 	// Check whether all authentication fields are present
 	public function is_site_authenticated() {
 		// If all the fields necessary to authenticate with Buffer have values, return true

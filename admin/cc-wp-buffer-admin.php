@@ -1,6 +1,7 @@
 <?php
 /**
  * Admin elements for the Buffer for WordPress plugin
+ * This file contains all functionality for actions within WordPress admin
  * admin/cc-wp-buffer-admin.php
  **/
 
@@ -24,12 +25,74 @@ class Admin extends Buffer {
 		/* Hooks and filters */
 		add_action( 'admin_menu', array( &$this, 'options_menu' ) ); // Add menu entry to Settings menu
 		add_action( 'admin_init', array( &$this, 'options_init' ) ); // Initialize plugin options
+		add_action( 'add_meta_boxes', array( &$this, 'add_metabox' ) ); // Add post meta box
+		add_action( 'save_post', array( &$this, 'save_metabox' ) ); // Save the contents of the meta box to post meta
+		add_action( 'publish_post', array( &$this, 'publish_metabox' ) ); // Send post data to Buffer when the post is published
 		/* End hooks and filters */
 		
 		/* Admin notices */
 		add_action( 'admin_notices', array( &$this, 'notice_not_auth' ) ); // If plugin is not fully authenticated
 		/* End admin notices */
 	} // End __construct()
+	
+	/*
+	===== Post Meta Box =====
+	*/
+	// Add meta box to post edit screen
+	function add_metabox() {
+		// Only add the meta box if the site has been authenticated with Buffer
+		if ( $this->api->is_site_authenticated() ) {
+			// Get Buffer profiles for specified Buffer account
+			$this->profile = $this->api->get_profile( $this->options['site_access_token'] );
+			
+			// Array of post types where the meta box should appear
+			$post_types = array( 'post', 'page' );
+		
+			// Call the WordPress function 'add_meta_box' for each post type where the meta box should appear
+			foreach ($post_types as $post_type ) {
+				add_meta_box(
+					self::ID, // HTML ID of the meta box
+					'Send to Buffer', // Title of the meta box, visible to the user
+					array( &$this, 'add_metabox_callback' ), // Callback method to display the meta box
+					$post_type // Post type where the meta box should be shown
+				);
+			}
+		}
+	} // End add_metabox()
+	
+	// Meta box callback
+	function add_metabox_callback( $post ) {
+		// Message to display at the top of the meta box
+		echo '<p>Use the fields below to customize what Buffer receives for this post. When the post is published, this information will be sent to Buffer.</p>';
+		
+		// Add a nonce field to the meta box
+		wp_nonce_field( self::PREFIX . 'metabox', self::PREFIX . 'nonce' );
+		
+		// Get meta box data already saved to post meta
+		$postmeta = get_post_meta( $post->ID, '_' . self::PREFIX . 'meta' );
+		
+		// Iterate through each profile
+		foreach ( $this->profile as $profile ) {
+			echo '<label id="label_' . self::PREFIX . 'profile_' . $profile['id'] . '" for="' . self::PREFIX . 'profile[' . $profile['id'] . '][message]" class="selectit">' . $profile['formatted_username'] . '</label>';
+			echo '<input type="text" name="' . self::PREFIX . 'profile[' . $profile['id'] . '][message]" id="' . self::PREFIX . 'profile_' . $profile['id'] . '_message">';
+		}
+	} // End add_metabox_callback()
+	
+	// Process the contents of the meta box
+	function save_metabox( $post_id ) {
+		// Check to make sure post is not autosave and that the nonce is valid. If any of those conditions fail, exit the script.
+		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) || ! wp_verify_nonce( $_POST[self::PREFIX . 'nonce'], self::PREFIX . 'metabox' ) ) {
+			return;
+		}
+	} // End save_metabox()
+	
+	// Send the post data to Buffer when the post is published
+	function publish_metabox( $post_id ) {
+		
+	} // End publish_metabox
+	/*
+	===== End Post Meta Box =====
+	*/
 	
 	/*
 	===== Admin Plugin Options =====
@@ -95,6 +158,7 @@ class Admin extends Buffer {
 		and no Buffer options will be shown, since we have no data from which to create them.
 		*/
 		if ( $this->api->is_site_authenticated() && ( isset( $_REQUEST['page'] ) && self::ID == $_REQUEST['page'] ) ) {
+			// Get Buffer profiles for specified Buffer account
 			$this->profile = $this->api->get_profile( $this->options['site_access_token'] );
 			
 			// If WordPress returns an error, notify the user
@@ -113,7 +177,7 @@ class Admin extends Buffer {
 	} // End options_init()
 	
 	// Options for Buffer authorization
-	function auth_options() {
+	function auth_options() {		
 		// Options section
 		add_settings_section(
 			'auth', // Name of the section
@@ -147,23 +211,26 @@ class Admin extends Buffer {
 		if ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) ) {
 			// If no access token is saved in the database, display a static field label
 			if ( empty( $this->options['site_access_token'] ) ) {
-				$site_access_token_field_label = 'Connect to Buffer';
+				// Add the settings field
+				add_settings_field(
+					'site_access_token', // Field ID
+					'Connect to Buffer', // Field title/label, displayed to the user
+					array( &$this, 'site_access_token_callback' ), // Callback method to display the option field
+					self::ID, // Page ID for the options page
+					'auth' // Settings section in which to display the field
+				);
 			}
-			// If it is set, display the name of the user associated with the account
+			// If it is set, provide the option to disconnect from Buffer
 			else {
-				$site_access_token_user = $this->api->get_user( $this->options['site_access_token'] );
-				
-				$site_access_token_field_label = $site_access_token_user['name'];
+				// Add the settings field
+				add_settings_field(
+					'buffer_oauth_disconnect', // Field ID
+					'Disconnect from Buffer', // Field title/label, displayed to the user
+					array( &$this, 'buffer_oauth_disconnect_callback' ), // Callback method to display the option field
+					self::ID, // Page ID for the options page
+					'auth' // Settings section in which to display the field
+				);
 			}
-			
-			// Add the settings field
-			add_settings_field(
-				'site_access_token', // Field ID
-				$site_access_token_field_label, // Field title/label, displayed to the user
-				array( &$this, 'site_access_token_callback' ), // Callback method to display the option field
-				self::ID, // Page ID for the options page
-				'auth' // Settings section in which to display the field
-			);
 		}
 	} // End auth_options()
 	
@@ -172,26 +239,23 @@ class Admin extends Buffer {
 	function buffer_options() {
 		// Iterate through each profile
 		foreach ( $this->profile as $profile ) {
-			// Iterate through the elements of each profile
-			foreach ( $profile as $element => $value ) {
-				// Add a settings section for each type of social network
-				add_settings_section(
-					$profile['service'], // Name of the section
-					$profile['formatted_service'], // Title of the section, displayed on the options page
-					null, // Callback for the section - unneeded for this plugin
-					self::ID // Page ID for the options page
-				);
-				
-				// Create a settings field to enable or disable each social media profile
-				add_settings_field(
-					$profile['id'], // Field ID (use the profile ID from Buffer)
-					'<img class="buffer_profile_avatar" src="' . $profile['avatar_https'] . '" alt="Avatar for ' . $profile['formatted_username'] . '">' . $profile['formatted_username'], // Field title/label displayed to the user (use the formatted username from Buffer)
-					array( &$this, 'buffer_settings_field_callback' ), // Callback method to display the option field
-					self::ID, // Page ID for the options page
-					$profile['service'], // Settings section in which to display the field
-					$profile // Send all the profile details to the callback method as an argument
-				);
-			}
+			// Add a settings section for each type of social network
+			add_settings_section(
+				$profile['service'], // Name of the section
+				$profile['formatted_service'], // Title of the section, displayed on the options page
+				null, // Callback for the section - unneeded for this plugin
+				self::ID // Page ID for the options page
+			);
+			
+			// Create a settings field to enable or disable each social media profile
+			add_settings_field(
+				$profile['id'], // Field ID (use the profile ID from Buffer)
+				'<img class="buffer_profile_avatar" src="' . $profile['avatar_https'] . '" alt="Avatar for ' . $profile['formatted_username'] . '">' . $profile['formatted_username'], // Field title/label displayed to the user (use the formatted username from Buffer)
+				array( &$this, 'buffer_settings_field_callback' ), // Callback method to display the option field
+				self::ID, // Page ID for the options page
+				$profile['service'], // Settings section in which to display the field
+				$profile // Send all the profile details to the callback method as an argument
+			);
 		}
 	} // End buffer_options()
 	
@@ -239,11 +303,14 @@ class Admin extends Buffer {
 			// Call the OAuth method
 			$this->api->buffer_oauth_connect();
 		}
-		// If the plugin is fully authenticated with Buffer, provide the option to disconnect
-		else {
-			$this->api->buffer_oauth_disconnect();
-		}
 	} // End client_id_callback()
+	
+	// Buffer OAuth disconnect
+	function buffer_oauth_disconnect_callback() {
+		// Checkbox input field
+		echo '<input type="checkbox" name="' . self::PREFIX . 'options[oauth_disconnect]" id="' . self::PREFIX . 'options_oauth_disconnect" value="yes">';
+		echo '<p class="description"><strong>WARNING:</strong> checking this box will remove the account credentials for the Buffer user currently associated with this plugin.</p>';
+	}
 	
 	// Callback for dynamically generated Buffer settings fields
 	// @param array $args arguments passed to the callback from the settings field
@@ -277,7 +344,7 @@ class Admin extends Buffer {
 				$options['client_id'] = $input['client_id']; // Application client ID
 				$options['client_secret'] = $input['client_secret']; // Application client secret
 			}
-			// If one of them is not hexadecimal, throw an error
+			// If either one of them is not hexadecimal, throw an error
 			else {
 				add_settings_error (
 					self::ID, // Setting to which the error applies
@@ -343,23 +410,31 @@ class Admin extends Buffer {
 		
 		// If the site is fully authenticated, process the rest of the plugin options
 		if ( $this->api->is_site_authenticated() ) {
-			// Set local variable for 'profiles' input
-			$profiles = $input['profiles'];
-			
-			// Sanitize the values of the 'enabled' checkboxes
-			foreach ( $profiles as $profile ) {
-				foreach ( $profile as $key => $value ) {
-					if ( ! empty( $profile['active'] ) ) {
-						$profile['active'] = 'yes';
-					}
-					else {
-						$profile['active'] = null;
+			// If OAuth Disconnect is selected, remove the Buffer user credentials
+			if ( ! empty( $input['oauth_disconnect'] ) ) {
+				$options['site_access_token'] = null;
+				$options['site_user_id'] = null;
+			}
+			// If OAuth Disconnect is not set, process the Buffer profile settings
+			else {
+				// Set local variable for 'profiles' input
+				$profiles = $input['profiles'];
+				
+				// Sanitize the values of the 'enabled' checkboxes
+				foreach ( $profiles as $profile ) {
+					foreach ( $profile as $key => $value ) {
+						if ( ! empty( $profile['active'] ) ) {
+							$profile['active'] = 'yes';
+						}
+						else {
+							$profile['active'] = null;
+						}
 					}
 				}
-			}
 			
-			// Save profiles options
-			$options['profiles'] = $profiles;
+				// Save profiles options
+				$options['profiles'] = $profiles;
+			}
 		}
 		
 		// Return the validated options
