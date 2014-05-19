@@ -196,5 +196,57 @@ class Api extends Buffer {
 	} // End get_profile()
 	
 	/* End Profile Methods */
+	
+	/* Updates Methods */
+	// Create a new update
+	// @param string $access_token Buffer access token, for API authentication
+	// @param array $data the payload to send to the Buffer API
+	// @param array $post the WordPress post object
+	public function create_update( $access_token, $data, $post ) {
+		// Specify the Buffer API endpoint to use for this request
+		$endpoint = '/updates/create';
+		
+		// Specify the method to use for this request
+		$method = 'post';
+		
+		// Create array to store API replies
+		$result = array();
+		
+		// Iterate through each update
+		foreach ( $data as $id => $fields ) {
+			// If the profile update is enabled, process the update
+			if ( ! empty( $fields['enabled'] ) ) {
+				// If the profile is a Twitter account, append the post/page URL to the update message
+				if ( 'twitter' == $fields['service'] ) {
+					$fields['message'] = $fields['message'] . ' ' . $post->guid;
+				}
+				
+				// Create array to use as API request payload
+				$args = array(
+					'body' => array(
+						'text'			=> $fields['message'],	// Text of the Buffer update
+						'profile_ids'	=> array( $id ),		// Profile ID that the update should be used with
+						'media'			=> array(
+							'link'			=> $post->guid,
+							'title'			=> $post->post_title,
+							'description'	=> $post->post_excerpt,
+						),
+					)
+				);
+				
+				// Send update to Buffer API using request() method
+				$result[$id] = $this->request(
+					$this->options['site_access_token'],
+					$endpoint,
+					$method,
+					$args
+				);
+			}
+		}
+		
+		// Return the results
+		return $result;
+	} // End create_update()
+	/* End Updates Methods */
 }
 ?>

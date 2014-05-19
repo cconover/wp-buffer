@@ -34,9 +34,8 @@ class Admin extends Buffer {
 		
 		// Iterate through each old status to create a hook
 		foreach ( $oldstatus as $status ) {
-			add_action( $status . '_to_publish', array( &$this, 'publish_metabox' ) ); // Post status changes from 'draft' to 'publish'
+			add_action( $status . '_to_publish', array( &$this, 'publish_metabox' ) );
 		}
-		/* End hooks and filters */
 		
 		/* Admin notices */
 		add_action( 'admin_notices', array( &$this, 'notice_not_auth' ) ); // If plugin is not fully authenticated
@@ -70,9 +69,6 @@ class Admin extends Buffer {
 	
 	// Meta box callback
 	function add_metabox_callback( $post ) {
-		// Message to display at the top of the meta box
-		echo '<p>Use the options below to customize what Buffer receives for this post. When the post is published, this information will be sent to Buffer.</p>';
-		
 		// Add a nonce field to the meta box
 		wp_nonce_field( self::PREFIX . 'metabox', self::PREFIX . 'nonce' );
 		
@@ -103,14 +99,16 @@ class Admin extends Buffer {
 					$enabled_checked = null;
 				}
 				?>
-				<div id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>">
+				<div id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>">
 					<strong><?php echo $profile['formatted_username']; ?></strong>
 					<br />
-					<label id="label_<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][enabled]" class="selectit">Send to Buffer</label>
-					<input type="checkbox" name="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][enabled]" id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>_enabled" <?php echo $enabled_checked; ?>>
+					<label id="label_<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][enabled]" class="selectit">Send to Buffer</label>
+					<input type="checkbox" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][enabled]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_enabled" <?php echo $enabled_checked; ?>>
 					
-					<label id="label_<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][message]" class="selectit">Message</label>
-					<input type="text" name="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>_message" value="<?php echo $value['message']; ?>">
+					<label id="label_<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" class="selectit">Message</label>
+					<input type="text" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_message" value="<?php echo $value['message']; ?>">
+					
+					<input type="hidden" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][service]" value="<?php echo $profile['service']; ?>">
 				</div>
 				<?php
 			}
@@ -126,19 +124,30 @@ class Admin extends Buffer {
 		}
 		
 		// If profile settings data has been posted, process it
-		if ( ! empty( $_POST[self::PREFIX . 'profile'] ) ) {
+		if ( ! empty( $_POST[self::PREFIX . 'update'] ) ) {
 			// Validate and sanitize submitted values
-			$profiles = $this->validate_metabox( $_POST[self::PREFIX . 'profile'] );
+			$updates = $this->validate_metabox( $_POST[self::PREFIX . 'update'] );
 			
 			// Save the data to post meta
-			update_post_meta( $post_id, '_' . self::PREFIX . 'meta', $profiles );
+			update_post_meta( $post_id, '_' . self::PREFIX . 'meta', $updates );
 		}
 	} // End save_metabox()
 	
 	// Send the post data to Buffer when the post is published
 	// @param int $post_id the ID for the post or page
-	function publish_metabox( $post_id ) {
+	function publish_metabox( $post ) {
+		// If nonce does not validate, exit the script
+		if ( ! wp_verify_nonce( $_POST[self::PREFIX . 'nonce'], self::PREFIX . 'metabox' ) ) {
+			return;
+		}
 		
+		// If data has been sent from the meta box, validate and sanitize all meta box data
+		if ( ! empty( $_POST[self::PREFIX . 'update'] ) ) {
+			$updates = $this->validate_metabox( $_POST[self::PREFIX . 'update'] );
+			
+			// Send updates to Buffer
+			$buffer = $this->api->create_update( $this->options['site_access_token'], $updates, $post );
+		}
 	} // End publish_metabox
 	
 	// Validate the values provided in the meta box fields
@@ -560,7 +569,7 @@ class Admin extends Buffer {
 				
 				// Set the default values
 				$profile_options['enabled'] = 'on';
-				$profile_options['message'] = '{{title}} {{url}}';
+				$profile_options['message'] = '{{title}}';
 				
 				// Update the local plugin options array
 				foreach ( $profile_options as $key => $value ) {
