@@ -63,18 +63,39 @@ class Admin extends Buffer {
 	// Meta box callback
 	function add_metabox_callback( $post ) {
 		// Message to display at the top of the meta box
-		echo '<p>Use the fields below to customize what Buffer receives for this post. When the post is published, this information will be sent to Buffer.</p>';
+		echo '<p>Use the options below to customize what Buffer receives for this post. When the post is published, this information will be sent to Buffer.</p>';
 		
 		// Add a nonce field to the meta box
 		wp_nonce_field( self::PREFIX . 'metabox', self::PREFIX . 'nonce' );
 		
 		// Get meta box data already saved to post meta
-		$postmeta = get_post_meta( $post->ID, '_' . self::PREFIX . 'meta' );
+		$postmeta = get_post_meta( $post->ID, '_' . self::PREFIX . 'meta', true );
 		
 		// Iterate through each profile
 		foreach ( $this->profile as $profile ) {
-			echo '<label id="label_' . self::PREFIX . 'profile_' . $profile['id'] . '" for="' . self::PREFIX . 'profile[' . $profile['id'] . '][message]" class="selectit">' . $profile['formatted_username'] . '</label>';
-			echo '<input type="text" name="' . self::PREFIX . 'profile[' . $profile['id'] . '][message]" id="' . self::PREFIX . 'profile_' . $profile['id'] . '_message">';
+			// If meta box data is saved in post meta, get the values for the current profile
+			if ( ! empty( $postmeta ) ) {
+				$value = $postmeta[$profile['id']];
+			}
+			
+			// Set whether 'enabled' should be checked
+			if ( ! empty( $value['enabled'] ) ) {
+				$enabled_checked = 'checked';
+			}
+			else {
+				$enabled_checked = null;
+			}
+			?>
+			<div id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>">
+				<strong><?php echo $profile['formatted_username']; ?></strong>
+				<br />
+				<label id="label_<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][enabled]" class="selectit">Send to Buffer</label>
+				<input type="checkbox" name="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][enabled]" id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>_enabled" <?php echo $enabled_checked; ?>>
+				
+				<label id="label_<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][message]" class="selectit">Message</label>
+				<input type="text" name="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>_message" value="<?php echo $value['message']; ?>">
+			</div>
+			<?php
 		}
 	} // End add_metabox_callback()
 	
@@ -83,6 +104,29 @@ class Admin extends Buffer {
 		// Check to make sure post is not autosave and that the nonce is valid. If any of those conditions fail, exit the script.
 		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) || ! wp_verify_nonce( $_POST[self::PREFIX . 'nonce'], self::PREFIX . 'metabox' ) ) {
 			return;
+		}
+		
+		// If profile settings data has been posted, process it
+		if ( ! empty( $_POST[self::PREFIX . 'profile'] ) ) {
+			// Set local variable for posted profile data
+			$profiles = $_POST[self::PREFIX . 'profile'];
+			
+			// Iterate through each profile to validate and sanitize the values
+			foreach ( $profiles as $id => $fields ) {
+				// Expand profile array to access individual values
+				foreach ( $fields as $field => $value ) {
+					// If a value is set for 'enabled', sanitize it
+					if ( ! empty( $fields['enabled'] ) ) {
+						$profiles[$id]['enabled'] = 'on';
+					}
+					
+					// Sanitize the message field
+					$profiles[$id]['message'] = sanitize_text_field( $fields['message'] );
+				}
+			}
+			
+			// Save the data to post meta
+			update_post_meta( $post_id, '_' . self::PREFIX . 'meta', $profiles );
 		}
 	} // End save_metabox()
 	
