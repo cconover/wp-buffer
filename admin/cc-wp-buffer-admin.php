@@ -27,7 +27,15 @@ class Admin extends Buffer {
 		add_action( 'admin_init', array( &$this, 'options_init' ) ); // Initialize plugin options
 		add_action( 'add_meta_boxes', array( &$this, 'add_metabox' ) ); // Add post meta box
 		add_action( 'save_post', array( &$this, 'save_metabox' ) ); // Save the contents of the meta box to post meta
-		add_action( 'publish_post', array( &$this, 'publish_metabox' ) ); // Send post data to Buffer when the post is published
+		
+		// Publish post/page hooks
+		// Array of statuses from which to hook if status changes to 'publish'
+		$oldstatus = array( 'new', 'pending', 'draft', 'auto-draft', 'future', 'private', 'inherit', 'trash' );
+		
+		// Iterate through each old status to create a hook
+		foreach ( $oldstatus as $status ) {
+			add_action( $status . '_to_publish', array( &$this, 'publish_metabox' ) ); // Post status changes from 'draft' to 'publish'
+		}
 		/* End hooks and filters */
 		
 		/* Admin notices */
@@ -73,33 +81,44 @@ class Admin extends Buffer {
 		
 		// Iterate through each profile
 		foreach ( $this->profile as $profile ) {
-			// If meta box data is saved in post meta, get the values for the current profile
-			if ( ! empty( $postmeta ) ) {
-				$value = $postmeta[$profile['id']];
-			}
-			
-			// Set whether 'enabled' should be checked
-			if ( ! empty( $value['enabled'] ) ) {
-				$enabled_checked = 'checked';
-			}
-			else {
-				$enabled_checked = null;
-			}
-			?>
-			<div id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>">
-				<strong><?php echo $profile['formatted_username']; ?></strong>
-				<br />
-				<label id="label_<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][enabled]" class="selectit">Send to Buffer</label>
-				<input type="checkbox" name="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][enabled]" id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>_enabled" <?php echo $enabled_checked; ?>>
+			// If the specified profile is enabled in plugin options, make it available in the meta box
+			if ( ! empty( $this->options['profiles'][$profile['id']]['enabled'] ) ) {
+				// If meta box data is saved in post meta for the specified profile, get the values for that profile
+				if ( ! empty( $postmeta[$profile['id']] ) ) {
+					$value = $postmeta[$profile['id']];
+				}
+				// If not, set defaults for the profile
+				else {
+					$value = array(
+						'enabled'	=> 'on',
+						'message'	=> $this->options['profiles'][$profile['id']]['message'],
+					);
+				}
 				
-				<label id="label_<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][message]" class="selectit">Message</label>
-				<input type="text" name="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>_message" value="<?php echo $value['message']; ?>">
-			</div>
-			<?php
+				// Set whether 'enabled' should be checked
+				if ( ! empty( $value['enabled'] ) ) {
+					$enabled_checked = 'checked';
+				}
+				else {
+					$enabled_checked = null;
+				}
+				?>
+				<div id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>">
+					<strong><?php echo $profile['formatted_username']; ?></strong>
+					<br />
+					<label id="label_<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][enabled]" class="selectit">Send to Buffer</label>
+					<input type="checkbox" name="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][enabled]" id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>_enabled" <?php echo $enabled_checked; ?>>
+					
+					<label id="label_<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][message]" class="selectit">Message</label>
+					<input type="text" name="<?php echo self::PREFIX; ?>profile[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>profile_<?php echo $profile['id']; ?>_message" value="<?php echo $value['message']; ?>">
+				</div>
+				<?php
+			}
 		}
 	} // End add_metabox_callback()
 	
 	// Process the contents of the meta box
+	// @param int $post_id the ID for the post or page
 	function save_metabox( $post_id ) {
 		// Check to make sure post is not autosave and that the nonce is valid. If any of those conditions fail, exit the script.
 		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) || ! wp_verify_nonce( $_POST[self::PREFIX . 'nonce'], self::PREFIX . 'metabox' ) ) {
@@ -108,22 +127,8 @@ class Admin extends Buffer {
 		
 		// If profile settings data has been posted, process it
 		if ( ! empty( $_POST[self::PREFIX . 'profile'] ) ) {
-			// Set local variable for posted profile data
-			$profiles = $_POST[self::PREFIX . 'profile'];
-			
-			// Iterate through each profile to validate and sanitize the values
-			foreach ( $profiles as $id => $fields ) {
-				// Expand profile array to access individual values
-				foreach ( $fields as $field => $value ) {
-					// If a value is set for 'enabled', sanitize it
-					if ( ! empty( $fields['enabled'] ) ) {
-						$profiles[$id]['enabled'] = 'on';
-					}
-					
-					// Sanitize the message field
-					$profiles[$id]['message'] = sanitize_text_field( $fields['message'] );
-				}
-			}
+			// Validate and sanitize submitted values
+			$profiles = $this->validate_metabox( $_POST[self::PREFIX . 'profile'] );
 			
 			// Save the data to post meta
 			update_post_meta( $post_id, '_' . self::PREFIX . 'meta', $profiles );
@@ -131,9 +136,27 @@ class Admin extends Buffer {
 	} // End save_metabox()
 	
 	// Send the post data to Buffer when the post is published
+	// @param int $post_id the ID for the post or page
 	function publish_metabox( $post_id ) {
 		
 	} // End publish_metabox
+	
+	// Validate the values provided in the meta box fields
+	// @param mixed $data the data submitted through the meta box
+	function validate_metabox( $data ) {
+		// Iterate through each profile to validate and sanitize the values
+		foreach ( $data as $id => $fields ) {
+			// If a value is set for 'enabled', sanitize it
+			if ( ! empty( $fields['enabled'] ) ) {
+				$data[$id]['enabled'] = 'on';
+			}
+				
+			// Sanitize the message field
+			$data[$id]['message'] = sanitize_text_field( $fields['message'] );
+		}
+		
+		return $data;
+	} // End validate_metabox()
 	/*
 	===== End Post Meta Box =====
 	*/
@@ -225,7 +248,7 @@ class Admin extends Buffer {
 		// Options section
 		add_settings_section(
 			'auth', // Name of the section
-			'Authorization', // Title of the section, displayed on the options page
+			'Buffer Authentication', // Title of the section, displayed on the options page
 			array( &$this, 'auth_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
@@ -360,7 +383,7 @@ class Admin extends Buffer {
 	// @param array $args arguments passed to the callback from the settings field
 	function buffer_settings_field_callback( $args ) {
 		// If this profile is enabled in plugin options, check the box
-		if ( ! empty( $this->options['profiles'][$args['id']]['active'] ) ) {
+		if ( ! empty( $this->options['profiles'][$args['id']]['enabled'] ) ) {
 			$checked = 'checked';
 		}
 		// If not, leave the box unchecked
@@ -369,10 +392,10 @@ class Admin extends Buffer {
 		}
 		
 		// Create checkbox for enabling publishing to this service
-		echo '<p>Enabled? <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_active" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][active]" type="checkbox" value="yes" ' . $checked . '></p>';
+		echo '<p>Enabled? <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_enabled" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][enabled]" type="checkbox" ' . $checked . '></p>';
 		
 		// Create text input for post syntax
-		echo '<p>Syntax <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_syntax" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][syntax]" type="text" value="' . $this->options['profiles'][$args['id']]['syntax'] . '" size=40></p>';
+		echo '<p>Message <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_message" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][message]" type="text" value="' . $this->options['profiles'][$args['id']]['message'] . '" size=40></p>';
 	} // End buffer_settings_field_callback()
 	/* End plugin options callbacks */
 	
@@ -465,15 +488,17 @@ class Admin extends Buffer {
 				$profiles = $input['profiles'];
 				
 				// Sanitize the values of the 'enabled' checkboxes
-				foreach ( $profiles as $profile ) {
-					foreach ( $profile as $key => $value ) {
-						if ( ! empty( $profile['active'] ) ) {
-							$profile['active'] = 'yes';
-						}
-						else {
-							$profile['active'] = null;
-						}
+				foreach ( $profiles as $id => $fields ) {
+					// Sanitize the 'enabled' checkbox
+					if ( ! empty( $fields['enabled'] ) ) {
+						$profiles[$id]['enabled'] = 'on';
 					}
+					else {
+						$profile[$id]['enabled'] = null;
+					}
+					
+					// Sanitize the text input for the 'message' field
+					$profiles[$id]['message'] = sanitize_text_field( $fields['message'] );
 				}
 			
 				// Save profiles options
@@ -511,7 +536,44 @@ class Admin extends Buffer {
 		
 		// Initialize the plugin API
 		$this->api_initialize();
+		
+		// Set defaults for any Buffer profiles not saved in plugin options
+		if ( $this->api->is_site_authenticated() ) {
+			$this->buffer_profile_defaults();
+		}
 	} // End admin_initialize()
+	
+	// If a Buffer profile does not have options saved in the database, set default options for the profile
+	function buffer_profile_defaults() {
+		// Set a local variable for plugin options
+		$options = $this->options;
+		
+		// Get all Buffer profiles for the user account
+		$profiles = $this->api->get_profile( $options['site_access_token'] );
+		
+		// Iterate through each Buffer profile
+		foreach ( $profiles as $profile ) {
+			// If the profile does not have an entry in plugin options, set defaults for the profile
+			if ( empty( $options['profiles'][$profile['id']] ) ) {
+				// Set a local variable to store the profile options array
+				$profile_options = array();
+				
+				// Set the default values
+				$profile_options['enabled'] = 'on';
+				$profile_options['message'] = '{{title}} {{url}}';
+				
+				// Update the local plugin options array
+				foreach ( $profile_options as $key => $value ) {
+					$options['profiles'][$profile['id']][$key] = $value;
+				}
+			}
+		}
+		
+		// Update plugin options in the database, and update class property if the DB update succeeds
+		if ( update_option( self::PREFIX . 'options', $options ) ) {
+			$this->options = $options;
+		}
+	} // End buffer_profile_defaults()
 	
 	// Plugin upgrade
 	function upgrade() {
