@@ -30,7 +30,7 @@ class Buffer {
 	protected $api; // Contains the plugin API object
 	protected $pluginpath; // Plugin directory path
 	protected $pluginfile; // Plugin file path
-	protected $classpath; // Path to class includes directory
+	protected $includespath; // Path to class includes directory
 	/* End plugin properties */
 	
 	// Class constructor
