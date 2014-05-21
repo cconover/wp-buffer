@@ -198,10 +198,11 @@ class Api extends Buffer {
 	/* End Profile Methods */
 	
 	/* Updates Methods */
-	// Create a new update
-	// @param string $access_token Buffer access token, for API authentication
-	// @param array $data the payload to send to the Buffer API
-	// @param array $post the WordPress post object
+	/** Create a new update
+	 * @param string $access_token Buffer access token, for API authentication
+	 * @param array $data the payload to send to the Buffer API
+	 * @param array $post the WordPress post object
+	 */
 	public function create_update( $access_token, $data, $post ) {
 		// Specify the Buffer API endpoint to use for this request
 		$endpoint = '/updates/create';
@@ -216,8 +217,8 @@ class Api extends Buffer {
 		foreach ( $data as $id => $fields ) {
 			// If the profile update is enabled, process the update
 			if ( ! empty( $fields['enabled'] ) ) {
-				// If the profile is a Twitter account, append the post/page URL to the update message
-				if ( 'twitter' == $fields['service'] ) {
+				// Append the post URL to the message, unless the service is Facebook
+				if ( 'facebook' != $fields['service'] ) {
 					$fields['message'] = $fields['message'] . ' ' . $post->guid;
 				}
 				
@@ -229,10 +230,20 @@ class Api extends Buffer {
 						'media'			=> array(
 							'link'			=> $post->guid,
 							'title'			=> $post->post_title,
-							'description'	=> $post->post_excerpt,
+							'description'	=> $this->post_excerpt( $post ),
 						),
 					)
 				);
+				
+				// If schedule is set to 'now' or 'top', set the appropriate value in the array
+				switch ( $fields['schedule'] ) {
+					case ( 'now' ):
+						$args['body']['now'] = true;
+						break;
+					case ( 'top' ):
+						$args['body']['top'] = true;
+						break;
+				}
 				
 				// Send update to Buffer API using request() method
 				$result[$id] = $this->request(
@@ -247,6 +258,38 @@ class Api extends Buffer {
 		// Return the results
 		return $result;
 	} // End create_update()
+	
+	/** Process the post excerpt. If one is defined, use it. If not, generate it from the post content.
+	 * @param mixed $post the WordPress post object
+	 */
+	function post_excerpt( $post ) {
+		// If the post excerpt is defined, use it
+		if ( ! empty( $post->post_excerpt ) ) {
+			$excerpt = $post->post_excerpt;
+		}
+		// If it's not definted, use the first 500 characters of the post content and sanitize it
+		else {
+			$excerpt = sanitize_text_field( substr( $post->post_content, 0, 500 ) );
+		}
+		
+		// Return the result
+		return $excerpt;
+	} // End post_excerpt()
 	/* End Updates Methods */
+	
+	/* Info Methods */
+	/** Get Buffer API configuration
+	 * @param string $access_token the user access token for the site
+	 */
+	public function get_config_info( $access_token ) {
+		// Set the API request endpoint
+		$endpoint = '/info/configuration';
+		
+		// Request the API configuration
+		$result = $this->request( $access_token, $endpoint );
+		
+		// Return the data received from the API
+		return $result;
+	} // End get_config_info()
 }
 ?>

@@ -15,6 +15,7 @@ namespace cconover\buffer;
 class Admin extends Buffer {
 	/* Class properties */
 	protected $profile; // All the social media profiles associated with site-wide Buffer account
+	protected $apiconfig; // Buffer API configuration info
 	
 	// Class constructor
 	function __construct() {
@@ -52,6 +53,12 @@ class Admin extends Buffer {
 			// Get Buffer profiles for specified Buffer account
 			$this->profile = $this->api->get_profile( $this->options['site_access_token'] );
 			
+			// Set defaults for any Buffer profiles not saved in plugin options
+			$this->buffer_profile_defaults();
+			
+			// Load scripts and styles
+			add_action( 'admin_enqueue_scripts', array( &$this, 'metabox_scripts' ) );
+			
 			// Array of post types where the meta box should appear
 			$post_types = array( 'post', 'page' );
 		
@@ -69,6 +76,14 @@ class Admin extends Buffer {
 	
 	// Meta box callback
 	function add_metabox_callback( $post ) {
+		// Diplay if JavaScript is disabled
+		?>
+		<noscript>JavaScript must be enabled to use this feature.</noscript>
+		<?php
+		// Container <div> for meta box contents
+		?>
+		<div id="<?php echo self::ID; ?>-metabox-contents">
+		<?php
 		// Add a nonce field to the meta box
 		wp_nonce_field( self::PREFIX . 'metabox', self::PREFIX . 'nonce' );
 		
@@ -88,6 +103,7 @@ class Admin extends Buffer {
 					$value = array(
 						'enabled'	=> 'on',
 						'message'	=> $this->options['profiles'][$profile['id']]['message'],
+						'schedule'	=> 'buffer',
 					);
 				}
 				
@@ -98,21 +114,35 @@ class Admin extends Buffer {
 				else {
 					$enabled_checked = null;
 				}
+				
+				// Parse tags in message text
+				$value['message'] = $this->parse_tags( $value['message'], $post );
 				?>
 				<div id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>">
 					<strong><?php echo $profile['formatted_username']; ?></strong>
 					<br />
-					<label id="label_<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][enabled]" class="selectit">Send to Buffer</label>
+					<label id="label_<?php echo self::PREFIX; ?>enabled_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][enabled]" class="selectit">Send to Buffer</label>
 					<input type="checkbox" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][enabled]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_enabled" <?php echo $enabled_checked; ?>>
 					
-					<label id="label_<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" class="selectit">Message</label>
-					<input type="text" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_message" value="<?php echo $value['message']; ?>">
+					<label id="label_<?php echo self::PREFIX; ?>message_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" class="selectit">Message</label>
+					<textarea name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_message"><?php echo $value['message']; ?></textarea>
+					
+					<label id="label_<?php echo self::PREFIX; ?>schedule_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" class="selectit">Schedule</label>
+					<input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_buffer" value="buffer" <?php if ( 'now' != $value['schedule'] && 'top' != $value['schedule'] ) { echo 'checked'; } ?>>Add to buffer
+					<br>
+					<input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_top" value="top" <?php if ( 'top' == $value['schedule'] ) { echo 'checked'; } ?>>Put at the top of the buffer
+					<br>
+					<input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_now" value="now" <?php if ( 'now' == $value['schedule'] ) { echo 'checked'; } ?>>Share immediately when the post is published
 					
 					<input type="hidden" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][service]" value="<?php echo $profile['service']; ?>">
 				</div>
 				<?php
 			}
 		}
+		// Close container <div>
+		?>
+		</div>
+		<?php
 	} // End add_metabox_callback()
 	
 	// Process the contents of the meta box
@@ -143,7 +173,11 @@ class Admin extends Buffer {
 		
 		// If data has been sent from the meta box, validate and sanitize all meta box data
 		if ( ! empty( $_POST[self::PREFIX . 'update'] ) ) {
+			// Validate and sanitize the meta box values
 			$updates = $this->validate_metabox( $_POST[self::PREFIX . 'update'] );
+			
+			// Get current post meta for Buffer, so we can save to post meta the returned status for each update
+			$postmeta = get_post_meta( $post->ID, '_' . self::PREFIX . 'meta', true );
 			
 			// Send updates to Buffer
 			$buffer = $this->api->create_update( $this->options['site_access_token'], $updates, $post );
@@ -162,10 +196,56 @@ class Admin extends Buffer {
 				
 			// Sanitize the message field
 			$data[$id]['message'] = sanitize_text_field( $fields['message'] );
+			
+			// Check schedule selection. If the value is not either 'now' or 'top', set the value to the default of 'buffer'
+			if ( 'now' != $fields['schedule'] && 'top' != $fields['schedule'] ) {
+				$data[$id]['schedule'] = 'buffer';
+			}
 		}
 		
 		return $data;
 	} // End validate_metabox()
+	
+	/** Parse tags used by the plugin to fill in post attributes
+	 * @param string $message the text for the Buffer message
+	 * @param mixed $post the WordPress post object. Must use $post when calling this method.
+	 */
+	function parse_tags( $message, $post ) {
+		// Array of tags to parse and their corresponding replacement values
+		$tags = array(
+			'excerpt'	=> $this->api->post_excerpt( $post ),
+			'title'		=> $post->post_title,
+		);
+		
+		// Iterate through each tag and parse it if it's present in the message
+		foreach ( $tags as $tag => $value ) {
+			$message = preg_replace( '/{{' . $tag . '}}/i', $value, $message );
+		}
+		
+		// Return the parsed-out message text
+		return $message;
+	} // End parse_tags()
+	
+	// Meta box scripts and styles
+	function metabox_scripts() {
+		// Load JavaScript
+		wp_enqueue_script(
+			self::ID, // Handle for the script
+			plugins_url( 'admin/assets/js/edit.js', $this->pluginfile ), // Location of the script
+			array(
+				'jquery'
+			),
+			self::VERSION
+		);
+		
+		//Load stylesheet
+		wp_enqueue_style(
+			self::ID, // Handle for the script
+			plugins_url( 'admin/assets/css/edit.css', $this->pluginfile ), // Location of the stylesheet
+			array(),
+			self::VERSION
+		);
+	} // End metabox_scripts()
 	/*
 	===== End Post Meta Box =====
 	*/
@@ -236,6 +316,9 @@ class Admin extends Buffer {
 		if ( $this->api->is_site_authenticated() && ( isset( $_REQUEST['page'] ) && self::ID == $_REQUEST['page'] ) ) {
 			// Get Buffer profiles for specified Buffer account
 			$this->profile = $this->api->get_profile( $this->options['site_access_token'] );
+			
+			// Set defaults for any Buffer profiles not saved in plugin options
+			$this->buffer_profile_defaults();
 			
 			// If WordPress returns an error, notify the user
 			if ( is_wp_error( $this->profile ) ) {
@@ -545,11 +628,6 @@ class Admin extends Buffer {
 		
 		// Initialize the plugin API
 		$this->api_initialize();
-		
-		// Set defaults for any Buffer profiles not saved in plugin options
-		if ( $this->api->is_site_authenticated() ) {
-			$this->buffer_profile_defaults();
-		}
 	} // End admin_initialize()
 	
 	// If a Buffer profile does not have options saved in the database, set default options for the profile
