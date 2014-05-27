@@ -1,3 +1,19 @@
 #cc-wp-buffer-metabox-contents {
 	display: none;
 }
+
+.buffer_metabox_profile_avatar {
+	width: 40px;
+	height: auto;
+	margin-right: 0.5em;
+	vertical-align: middle;
+}
+
+.cc-wp-buffer-metabox-message {
+	width: 100%;
+}
+
+.cc-wp-buffer-metabox-schedule {
+	display: inline-block;
+	margin-right: 1em;
+}
