@@ -1,3 +1,7 @@
-@charset "utf-8";
-/* CSS Document */
-
+/* Profile avatar */
+.buffer_profile_avatar {
+	width: 48px;
+	height: auto;
+	margin-right: 0.5em;
+	vertical-align: middle;
+}
