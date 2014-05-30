@@ -16,6 +16,7 @@ class Admin extends Buffer {
 	/* Class properties */
 	protected $profile; // All the social media profiles associated with site-wide Buffer account
 	protected $apiconfig; // Buffer API configuration info
+	protected $service = array(); // Array containing the list of services with active accounts
 	
 	// Class constructor
 	function __construct() {
@@ -90,7 +91,18 @@ class Admin extends Buffer {
 		// Get meta box data already saved to post meta
 		$postmeta = get_post_meta( $post->ID, '_' . self::PREFIX . 'meta', true );
 		
-		// Iterate through each profile
+		// Create tabs for each service
+		?>
+		<ul>
+			<?php
+			foreach ( $this->profile as $profile ) {
+				echo '<li><a href="#' . self::ID . '-' . $profile['service'] . '">' . $this->apiconfig['services'][$profile['service']]['types']['profile']['name'] . '</a></li>';
+			}
+			?>
+		</ul>
+		<?php
+		
+		// Iterate through each profile to create update options form
 		foreach ( $this->profile as $profile ) {
 			// If the specified profile is enabled in plugin options, make it available in the meta box
 			if ( ! empty( $this->options['profiles'][$profile['id']]['enabled'] ) ) {
@@ -119,20 +131,18 @@ class Admin extends Buffer {
 				$value['message'] = $this->parse_tags( $value['message'], $post );
 				?>
 				<div id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>">
-					<strong><?php echo $profile['formatted_username']; ?></strong>
+					<img class="buffer_metabox_profile_avatar" src="<?php echo $profile['avatar_https']; ?>" alt="Avatar for <?php echo $profile['service']; ?> - <?php echo $profile['formatted_username']; ?>"><strong><?php echo $profile['formatted_username']; ?></strong>
 					<br />
-					<label id="label_<?php echo self::PREFIX; ?>enabled_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][enabled]" class="selectit">Send to Buffer</label>
-					<input type="checkbox" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][enabled]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_enabled" <?php echo $enabled_checked; ?>>
-					
-					<label id="label_<?php echo self::PREFIX; ?>message_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" class="selectit">Message</label>
-					<textarea name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_message"><?php echo $value['message']; ?></textarea>
-					
-					<label id="label_<?php echo self::PREFIX; ?>schedule_<?php echo $profile['id']; ?>" for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" class="selectit">Schedule</label>
-					<input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_buffer" value="buffer" <?php if ( 'now' != $value['schedule'] && 'top' != $value['schedule'] ) { echo 'checked'; } ?>>Add to buffer
+					<label for="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_enabled" class="selectit">Send to Buffer</label>
+					<input type="checkbox" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][enabled]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_enabled" class="<?php echo self::ID; ?>-metabox-enabled" <?php echo $enabled_checked; ?>>
 					<br>
-					<input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_top" value="top" <?php if ( 'top' == $value['schedule'] ) { echo 'checked'; } ?>>Put at the top of the buffer
+					<label for="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_message" class="selectit">Message</label>
 					<br>
-					<input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_now" value="now" <?php if ( 'now' == $value['schedule'] ) { echo 'checked'; } ?>>Share immediately when the post is published
+					<textarea name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][message]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_message" class="<?php echo self::ID; ?>-metabox-message"><?php echo $value['message']; ?></textarea>
+					<br>
+					<label for="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>_schedule" class="selectit">Schedule</label>
+					<br>
+					<div class="<?php echo self::ID; ?>-metabox-schedule"><input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_buffer" value="buffer" <?php if ( 'now' != $value['schedule'] && 'top' != $value['schedule'] ) { echo 'checked'; } ?>><label for="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_buffer">Add to buffer</label></div><div class="<?php echo self::ID; ?>-metabox-schedule"><input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_top" value="top" <?php if ( 'top' == $value['schedule'] ) { echo 'checked'; } ?>><label for="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_top">Put at the top of the buffer</label></div><div class="<?php echo self::ID; ?>-metabox-schedule"><input type="radio" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][schedule]" id="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_now" value="now" <?php if ( 'now' == $value['schedule'] ) { echo 'checked'; } ?>><label for="<?php echo self::PREFIX; ?>update_<?php echo $profile['id']; ?>_schedule_now">Share immediately when the post is published</label></div>
 					
 					<input type="hidden" name="<?php echo self::PREFIX; ?>update[<?php echo $profile['id']; ?>][service]" value="<?php echo $profile['service']; ?>">
 				</div>
@@ -230,17 +240,18 @@ class Admin extends Buffer {
 	function metabox_scripts() {
 		// Load JavaScript
 		wp_enqueue_script(
-			self::ID, // Handle for the script
+			self::ID . '-metabox', // Handle for the script
 			plugins_url( 'admin/assets/js/edit.js', $this->pluginfile ), // Location of the script
 			array(
-				'jquery'
+				'jquery',
+				'jquery-ui-tabs'
 			),
 			self::VERSION
 		);
 		
 		//Load stylesheet
 		wp_enqueue_style(
-			self::ID, // Handle for the script
+			self::ID . '-metabox', // Handle for the script
 			plugins_url( 'admin/assets/css/edit.css', $this->pluginfile ), // Location of the stylesheet
 			array(),
 			self::VERSION
@@ -264,45 +275,8 @@ class Admin extends Buffer {
 		);
 	} // End options_menu()
 	
-	// Render options page
-	function options_page() {
-		// Make sure the user has the necessary privileges to manage plugin options
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( 'Sorry, you do not have sufficient privileges to access the plugin options for ' . self::NAME . '.' );
-		}
-		?>
-		
-		<div class="wrap">
-			<h2><?php echo self::NAME; ?></h2>
-			
-			<form action="options.php" method="post">
-				<?php
-				settings_fields( self::PREFIX . 'options_fields' ); // Retrieve the fields created for plugin options
-				do_settings_sections( self::ID ); // Display the section(s) for the options page
-				
-				// Show the submit button on any screen other than OAuth authorization
-				if ( ! ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) && empty( $this->options['site_access_token'] ) ) ) {
-					submit_button(); // Form submit button generated by WordPress
-				}
-				?>
-			</form>
-		</div>
-		
-		<?php
-	} // End options_page()
-	
 	// Set up options page
 	function options_init() {
-		// Register the plugin settings
-		register_setting(
-			self::PREFIX . 'options_fields', // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
-			self::PREFIX . 'options', // The name of the plugin options entry in the database.
-			array( &$this, 'options_validate' ) // The callback method to validate plugin options
-		);
-		
-		// Load plugin options for Buffer authentication
-		$this->auth_options();
-		
 		/*
 		Buffer Profiles
 		Buffer uses profiles to store the social media accounts attached to a Buffer account. We will retrieve all
@@ -317,9 +291,6 @@ class Admin extends Buffer {
 			// Get Buffer profiles for specified Buffer account
 			$this->profile = $this->api->get_profile( $this->options['site_access_token'] );
 			
-			// Set defaults for any Buffer profiles not saved in plugin options
-			$this->buffer_profile_defaults();
-			
 			// If WordPress returns an error, notify the user
 			if ( is_wp_error( $this->profile ) ) {
 				echo '<div class="error settings-error"><p><strong>Uh oh! We had a problem getting the social media accounts tied to your Buffer account. Let\'s try again.</strong><br><em>WordPress Error: ' . $this->profile->get_error_message() . '</em></p></div>';
@@ -330,17 +301,71 @@ class Admin extends Buffer {
 			}
 			// Otherwise the profile data is valid, so we can add the Buffer options to the page
 			else {
+				// Set defaults for any Buffer profiles not saved in plugin options
+				$this->buffer_profile_defaults();
+			
+				// Set the array with list of enabled services
+				$this->service = $this->services_list( $this->profile );
+			
+				// Register the settings for each service
+				foreach ( $this->service as $service ) {
+					register_setting(
+						self::PREFIX . $service, // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
+						self::PREFIX . 'options', // The name of the plugin options entry in the database.
+						array( &$this, 'options_validate' ) // The callback method to validate plugin options
+					);
+				}
+				
+				// Call the Buffer options
 				$this->buffer_options();
 			}
 		}
+		
+		// Register the Buffer authentication settings
+		register_setting(
+			self::PREFIX . 'buffer_auth', // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
+			self::PREFIX . 'options', // The name of the plugin options entry in the database.
+			array( &$this, 'options_validate' ) // The callback method to validate plugin options
+		);
+		
+		// Load plugin options for Buffer authentication
+		$this->auth_options();
+		
+		// Load scripts and stylesheets for the Options page
+		add_action( 'admin_enqueue_scripts', array( &$this, 'options_scripts' ) );
 	} // End options_init()
 	
-	// Options for Buffer authorization
-	function auth_options() {		
+	/* Buffer Options */
+	// Generate plugin options fields from profiles
+	function buffer_options() {
+		// Iterate through each profile
+		foreach ( $this->profile as $profile ) {
+			// Add a settings section for each type of social network
+			add_settings_section(
+				self::PREFIX . $profile['service'], // Name of the section
+				null, // Title of the section, unneeded here because it's handled by the tabbed navigation
+				null, // Callback for the section - unneeded for this plugin
+				self::ID // Page ID for the options page
+			);
+			
+			// Create a settings field to manage each social media profile
+			add_settings_field(
+				$profile['id'], // Field ID (use the profile ID from Buffer)
+				'<img class="buffer_profile_avatar" src="' . $profile['avatar_https'] . '" alt="Avatar for ' . $profile['service'] . ' - ' . $profile['formatted_username'] . '"><span class="buffer_profile_username">' . $profile['formatted_username'] . '</span>', // Field title/label displayed to the user, includes avatar for profile (use the formatted username from Buffer)
+				array( &$this, 'buffer_settings_field_callback' ), // Callback method to display the option field
+				self::ID, // Page ID for the options page
+				self::PREFIX . $profile['service'], // Settings section in which to display the field
+				$profile // Send all the profile details to the callback method as an argument
+			);
+		}
+	} // End buffer_options()
+	
+	// Authentication options
+	function auth_options() {
 		// Options section
 		add_settings_section(
-			'auth', // Name of the section
-			'Buffer Authentication', // Title of the section, displayed on the options page
+			self::PREFIX . 'buffer_auth', // Name of the section
+			null, // Title of the section, unneeded here because it's handled by the tabbed navigation
 			array( &$this, 'auth_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
@@ -353,7 +378,7 @@ class Admin extends Buffer {
 				'Client ID', // Field title/label, displayed to the user
 				array( &$this, 'client_id_callback' ), // Callback method to display the option field
 				self::ID, // Page ID for the options page
-				'auth' // Settings section in which to display the field
+				self::PREFIX . 'buffer_auth' // Settings section in which to display the field
 			);
 			
 			// Buffer application client secret
@@ -362,7 +387,7 @@ class Admin extends Buffer {
 				'Client secret', // Field title/label, displayed to the user
 				array( &$this, 'client_secret_callback' ), // Callback method to display the option field
 				self::ID, // Page ID for the options page
-				'auth' // Settings section in which to display the field
+				self::PREFIX . 'buffer_auth' // Settings section in which to display the field
 			);
 		}
 		
@@ -376,7 +401,7 @@ class Admin extends Buffer {
 					'Connect to Buffer', // Field title/label, displayed to the user
 					array( &$this, 'site_access_token_callback' ), // Callback method to display the option field
 					self::ID, // Page ID for the options page
-					'auth' // Settings section in which to display the field
+					self::PREFIX . 'buffer_auth' // Settings section in which to display the field
 				);
 			}
 			// If it is set, provide the option to disconnect from Buffer
@@ -387,40 +412,33 @@ class Admin extends Buffer {
 					'Disconnect from Buffer', // Field title/label, displayed to the user
 					array( &$this, 'buffer_oauth_disconnect_callback' ), // Callback method to display the option field
 					self::ID, // Page ID for the options page
-					'auth' // Settings section in which to display the field
+					self::PREFIX . 'buffer_auth' // Settings section in which to display the field
 				);
 			}
 		}
 	} // End auth_options()
 	
-	/* Buffer Options */
-	// Generate plugin options fields from profiles
-	function buffer_options() {
-		// Iterate through each profile
-		foreach ( $this->profile as $profile ) {
-			// Add a settings section for each type of social network
-			add_settings_section(
-				$profile['service'], // Name of the section
-				$profile['formatted_service'], // Title of the section, displayed on the options page
-				null, // Callback for the section - unneeded for this plugin
-				self::ID // Page ID for the options page
-			);
-			
-			// Create a settings field to enable or disable each social media profile
-			add_settings_field(
-				$profile['id'], // Field ID (use the profile ID from Buffer)
-				'<img class="buffer_profile_avatar" src="' . $profile['avatar_https'] . '" alt="Avatar for ' . $profile['formatted_username'] . '">' . $profile['formatted_username'], // Field title/label displayed to the user (use the formatted username from Buffer)
-				array( &$this, 'buffer_settings_field_callback' ), // Callback method to display the option field
-				self::ID, // Page ID for the options page
-				$profile['service'], // Settings section in which to display the field
-				$profile // Send all the profile details to the callback method as an argument
-			);
-		}
-	} // End buffer_options()
-	
-	/* End Buffer Options */
-	
 	/* Plugin options callbacks */
+	// Callback for dynamically generated Buffer settings fields
+	// @param array $args arguments passed to the callback from the settings field
+	function buffer_settings_field_callback( $args ) {
+		// If this profile is enabled in plugin options, check the box
+		if ( ! empty( $this->options['profiles'][$args['id']]['enabled'] ) ) {
+			$checked = 'checked';
+		}
+		// If not, leave the box unchecked
+		else {
+			$checked = null;
+		}
+		
+		// Create checkbox for enabling publishing to this service
+		echo '<p>Enabled? <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_enabled" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][enabled]" type="checkbox" ' . $checked . '></p>';
+		
+		// Create text input for post message
+		echo '<p>Message <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_message" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][message]" type="text" value="' . $this->options['profiles'][$args['id']]['message'] . '" size=40></p>';
+	} // End buffer_settings_field_callback()
+	/* End plugin options callbacks */
+	
 	// Authorization section
 	function auth_callback() {
 		// If client ID & secret haven't yet been saved, display this message
@@ -470,26 +488,6 @@ class Admin extends Buffer {
 		echo '<input type="checkbox" name="' . self::PREFIX . 'options[oauth_disconnect]" id="' . self::PREFIX . 'options_oauth_disconnect" value="yes">';
 		echo '<p class="description"><strong>WARNING:</strong> checking this box will remove the account credentials for the Buffer user currently associated with this plugin.</p>';
 	}
-	
-	// Callback for dynamically generated Buffer settings fields
-	// @param array $args arguments passed to the callback from the settings field
-	function buffer_settings_field_callback( $args ) {
-		// If this profile is enabled in plugin options, check the box
-		if ( ! empty( $this->options['profiles'][$args['id']]['enabled'] ) ) {
-			$checked = 'checked';
-		}
-		// If not, leave the box unchecked
-		else {
-			$checked = null;
-		}
-		
-		// Create checkbox for enabling publishing to this service
-		echo '<p>Enabled? <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_enabled" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][enabled]" type="checkbox" ' . $checked . '></p>';
-		
-		// Create text input for post syntax
-		echo '<p>Message <input id="' . self::PREFIX . 'options_profiles_' . $args['id'] . '_message" name="' . self::PREFIX . 'options[profiles][' . $args['id'] . '][message]" type="text" value="' . $this->options['profiles'][$args['id']]['message'] . '" size=40></p>';
-	} // End buffer_settings_field_callback()
-	/* End plugin options callbacks */
 	
 	// Validate plugin options
 	function options_validate( $input ) {
@@ -601,6 +599,73 @@ class Admin extends Buffer {
 		// Return the validated options
 		return $options;
 	} // End options_validate()
+	
+	// Render options page
+	function options_page() {
+		// Make sure the user has the necessary privileges to manage plugin options
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Sorry, you do not have sufficient privileges to access the plugin options for ' . self::NAME . '.' );
+		}
+		?>
+		
+		<div class="wrap">
+			<h2><?php echo self::NAME; ?></h2>
+			
+			<?php
+			// Check to see if 'tab' is set, and if so get the value
+			if ( ! empty( $_GET['tab'] ) ) {
+				$active_tab = $_GET['tab'];
+			}
+			// If 'tab' is not set, default to the first service in the array
+			elseif ( empty( $_GET['tab'] ) && ! empty( $this->service ) ) {
+				$active_tab = $this->service[0];
+			}
+			// If neither 'tab' nor the service array are set, default to the Buffer Authentication tab
+			else {
+				$active_tab = 'buffer_auth';
+			}
+			?>
+			
+			<h2 class="nav-tab-wrapper">
+			<?php
+			// If the service array is set, set up the tabs for the services
+			if ( ! empty( $this->service ) ) {
+				// Iterate through each service in the array to create each tab
+				foreach( $this->service as $service ) {
+					?>
+					<a href="?page=<?php echo self::ID; ?>&tab=<?php echo $service; ?>" class="nav-tab <?php echo $service == $active_tab ? 'nav-tab-active' : ''; ?>"><?php echo $this->apiconfig['services'][$service]['types']['profile']['name']; ?></a>
+					<?php
+				}
+			}
+			?>
+				<a href="?page=<?php echo self::ID; ?>&tab=buffer_auth" class="nav-tab <?php echo 'buffer_auth' == $active_tab ? 'nav-tab-active' : ''; ?>">Buffer Authentication</a>
+			</h2><!-- .nav-tab-wrapper -->
+			
+			<form action="options.php" method="post">
+				<?php
+				settings_fields( self::PREFIX . $active_tab ); // Retrieve the fields created for the current tab
+				do_settings_sections( self::PREFIX . $active_tab ); // Display the section for the current tab
+				
+				// Show the submit button on any screen other than OAuth authorization
+				if ( ! ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) && empty( $this->options['site_access_token'] ) ) ) {
+					submit_button(); // Form submit button generated by WordPress
+				}
+				?>
+			</form>
+		</div>
+		<?php
+	} // End options_page()
+	
+	// Scripts and stylesheets for Options page
+	function options_scripts() {
+		//Load stylesheet
+		wp_enqueue_style(
+			self::ID, // Handle for the script
+			plugins_url( 'admin/assets/css/options.css', $this->pluginfile ), // Location of the stylesheet
+			array(),
+			self::VERSION
+		);
+	}
 	/*
 	===== End Admin Plugin Options =====
 	*/
@@ -619,6 +684,28 @@ class Admin extends Buffer {
 	*/
 	
 	/*
+	===== Miscellaneous =====
+	*/
+	/**
+	 * Create an array containing the list of services with active accounts. Unique array.
+	 * @param array $profiles the array of profiles retrieved from Buffer
+	 */
+	function services_list( $profiles ) {
+		// Initialize the array where the list will be stored
+		$profilelist = array();
+		
+		// Iterate through all the Buffer profiles to get the associated service and add it to the array
+		foreach ( $profiles as $profile ) {
+			array_push( $profilelist, $profile['service'] );
+		}
+		
+		// Remove duplicate entries from the array
+		$profilelist = array_unique( $profilelist );
+		
+		// Return the array
+		return $profilelist;
+	}
+	/*
 	===== Admin Initialization =====
 	*/
 	// Initialize the admin class
@@ -628,6 +715,9 @@ class Admin extends Buffer {
 		
 		// Initialize the plugin API
 		$this->api_initialize();
+		
+		// Get Buffer API configuration info
+		$this->apiconfig = $this->api->get_config_info( $this->options['site_access_token'] );
 	} // End admin_initialize()
 	
 	// If a Buffer profile does not have options saved in the database, set default options for the profile
