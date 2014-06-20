@@ -16,7 +16,7 @@ class Admin extends Buffer {
 	/* Class properties */
 	protected $profile; // All the social media profiles associated with site-wide Buffer account
 	protected $apiconfig; // Buffer API configuration info
-	protected $service = array(); // Array containing the list of services with active accounts
+	protected $service; // Array containing the list of services with active accounts
 	
 	// Class constructor
 	function __construct() {
@@ -305,21 +305,26 @@ class Admin extends Buffer {
 				$this->buffer_profile_defaults();
 			
 				// Set the array with list of enabled services
-				$this->service = $this->services_list( $this->profile );
+				$this->service = $this->services_array( $this->profile );
 			
-				// Register the settings for each service
-				foreach ( $this->service as $service ) {
-					register_setting(
-						self::PREFIX . $service, // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
-						self::PREFIX . 'options', // The name of the plugin options entry in the database.
-						array( &$this, 'options_validate' ) // The callback method to validate plugin options
-					);
+				// If the services array has values, set up the settings
+				if ( ! empty( $this->service ) ) {
+					// Call the Buffer options
+					$this->buffer_options();
+					
+					foreach ( $this->service as $service ) {
+						register_setting(
+							self::PREFIX . $service, // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
+							self::PREFIX . 'options', // The name of the plugin options entry in the database.
+							array( &$this, 'options_validate' ) // The callback method to validate plugin options
+						);
+					}
 				}
-				
-				// Call the Buffer options
-				$this->buffer_options();
 			}
 		}
+		
+		// Load plugin options for Buffer authentication
+		$this->auth_options();
 		
 		// Register the Buffer authentication settings
 		register_setting(
@@ -327,9 +332,6 @@ class Admin extends Buffer {
 			self::PREFIX . 'options', // The name of the plugin options entry in the database.
 			array( &$this, 'options_validate' ) // The callback method to validate plugin options
 		);
-		
-		// Load plugin options for Buffer authentication
-		$this->auth_options();
 		
 		// Load scripts and stylesheets for the Options page
 		add_action( 'admin_enqueue_scripts', array( &$this, 'options_scripts' ) );
@@ -342,7 +344,7 @@ class Admin extends Buffer {
 		foreach ( $this->profile as $profile ) {
 			// Add a settings section for each type of social network
 			add_settings_section(
-				self::PREFIX . $profile['service'], // Name of the section
+				self::PREFIX . $profile['service'], // ID of the section
 				null, // Title of the section, unneeded here because it's handled by the tabbed navigation
 				null, // Callback for the section - unneeded for this plugin
 				self::ID // Page ID for the options page
@@ -354,7 +356,7 @@ class Admin extends Buffer {
 				'<img class="buffer_profile_avatar" src="' . $profile['avatar_https'] . '" alt="Avatar for ' . $profile['service'] . ' - ' . $profile['formatted_username'] . '"><span class="buffer_profile_username">' . $profile['formatted_username'] . '</span>', // Field title/label displayed to the user, includes avatar for profile (use the formatted username from Buffer)
 				array( &$this, 'buffer_settings_field_callback' ), // Callback method to display the option field
 				self::ID, // Page ID for the options page
-				self::PREFIX . $profile['service'], // Settings section in which to display the field
+				self::PREFIX . $profile['service'], // Settings section ID in which to display the field
 				$profile // Send all the profile details to the callback method as an argument
 			);
 		}
@@ -364,7 +366,7 @@ class Admin extends Buffer {
 	function auth_options() {
 		// Options section
 		add_settings_section(
-			self::PREFIX . 'buffer_auth', // Name of the section
+			self::PREFIX . 'buffer_auth', // ID of the section
 			null, // Title of the section, unneeded here because it's handled by the tabbed navigation
 			array( &$this, 'auth_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
@@ -378,7 +380,7 @@ class Admin extends Buffer {
 				'Client ID', // Field title/label, displayed to the user
 				array( &$this, 'client_id_callback' ), // Callback method to display the option field
 				self::ID, // Page ID for the options page
-				self::PREFIX . 'buffer_auth' // Settings section in which to display the field
+				self::PREFIX . 'buffer_auth' // Settings section ID in which to display the field
 			);
 			
 			// Buffer application client secret
@@ -387,7 +389,7 @@ class Admin extends Buffer {
 				'Client secret', // Field title/label, displayed to the user
 				array( &$this, 'client_secret_callback' ), // Callback method to display the option field
 				self::ID, // Page ID for the options page
-				self::PREFIX . 'buffer_auth' // Settings section in which to display the field
+				self::PREFIX . 'buffer_auth' // Settings section ID in which to display the field
 			);
 		}
 		
@@ -401,7 +403,7 @@ class Admin extends Buffer {
 					'Connect to Buffer', // Field title/label, displayed to the user
 					array( &$this, 'site_access_token_callback' ), // Callback method to display the option field
 					self::ID, // Page ID for the options page
-					self::PREFIX . 'buffer_auth' // Settings section in which to display the field
+					self::PREFIX . 'buffer_auth' // Settings section ID in which to display the field
 				);
 			}
 			// If it is set, provide the option to disconnect from Buffer
@@ -412,7 +414,7 @@ class Admin extends Buffer {
 					'Disconnect from Buffer', // Field title/label, displayed to the user
 					array( &$this, 'buffer_oauth_disconnect_callback' ), // Callback method to display the option field
 					self::ID, // Page ID for the options page
-					self::PREFIX . 'buffer_auth' // Settings section in which to display the field
+					self::PREFIX . 'buffer_auth' // Settings section ID in which to display the field
 				);
 			}
 		}
@@ -494,7 +496,7 @@ class Admin extends Buffer {
 		// Set a local variable for the existing plugin options. This is so we don't mix up data.
 		$options = $this->options;
 		
-		// If client ID and client secret have been changed from what's in the database, validate them
+		// If client ID and client secret were not previously set, check the provided values
 		if ( empty( $this->options['client_id'] ) || empty( $this->options['client_secret'] ) ) {
 			// Check to make sure whether the provided values are hexadecimal
 			if ( ctype_xdigit( $input['client_id'] ) && ctype_xdigit( $input['client_secret'] ) ) {
@@ -643,8 +645,8 @@ class Admin extends Buffer {
 			
 			<form action="options.php" method="post">
 				<?php
-				settings_fields( self::PREFIX . $active_tab ); // Retrieve the fields created for the current tab
-				do_settings_sections( self::PREFIX . $active_tab ); // Display the section for the current tab
+				settings_fields( self::PREFIX . $active_tab ); // Options page information fields
+				do_settings_sections( self::ID ); // Display the section for the current tab
 				
 				// Show the submit button on any screen other than OAuth authorization
 				if ( ! ( ! empty( $this->options['client_id'] ) && ! empty( $this->options['client_secret'] ) && empty( $this->options['site_access_token'] ) ) ) {
@@ -676,7 +678,7 @@ class Admin extends Buffer {
 	// If the plugin is not fully authenticated and the plugin options page is not the current page, display an admin notice
 	function notice_not_auth() {
 		if ( ! $this->api->is_site_authenticated() && ( ! isset( $_REQUEST['page'] ) || self::ID != $_REQUEST['page'] ) ) {
-			echo '<div class="error"><p><strong>Hang on a second! <a href="' . $this->api->optionsurl() . '">' . self::NAME . '</a> needs to be connected to Buffer.</strong></p></div>';
+			echo '<div class="error"><p><strong>Heads up! If you want to use Buffer with this site, <a href="' . $this->api->optionsurl() . '">' . self::NAME . '</a> needs to be connected.</strong></p></div>';
 		}
 	} // End notice_not_auth()
 	/*
@@ -690,7 +692,7 @@ class Admin extends Buffer {
 	 * Create an array containing the list of services with active accounts. Unique array.
 	 * @param array $profiles the array of profiles retrieved from Buffer
 	 */
-	function services_list( $profiles ) {
+	function services_array( $profiles ) {
 		// Initialize the array where the list will be stored
 		$profilelist = array();
 		
