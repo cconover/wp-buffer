@@ -306,12 +306,12 @@ class Admin extends Buffer {
 			
 				// Set the array with list of enabled services
 				$this->service = $this->services_array( $this->profile );
-			
+				
 				// If the services array has values, set up the settings
 				if ( ! empty( $this->service ) ) {
 					// Call the Buffer options
 					$this->buffer_options();
-					
+
 					foreach ( $this->service as $service ) {
 						register_setting(
 							self::PREFIX . $service, // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
@@ -386,7 +386,7 @@ class Admin extends Buffer {
 			// Buffer application client secret
 			add_settings_field(
 				'client_secret', // Field ID
-				'Client secret', // Field title/label, displayed to the user
+				'Client Secret', // Field title/label, displayed to the user
 				array( &$this, 'client_secret_callback' ), // Callback method to display the option field
 				self::ID, // Page ID for the options page
 				self::PREFIX . 'buffer_auth' // Settings section ID in which to display the field
