@@ -311,14 +311,6 @@ class Admin extends Buffer {
 				if ( ! empty( $this->service ) ) {
 					// Call the Buffer options
 					$this->buffer_options();
-
-					foreach ( $this->service as $service ) {
-						register_setting(
-							self::PREFIX . $service, // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
-							self::PREFIX . 'options', // The name of the plugin options entry in the database.
-							array( &$this, 'options_validate' ) // The callback method to validate plugin options
-						);
-					}
 				}
 			}
 		}
@@ -328,7 +320,7 @@ class Admin extends Buffer {
 		
 		// Register the Buffer authentication settings
 		register_setting(
-			self::PREFIX . 'buffer_auth', // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
+			self::PREFIX . 'options', // The namespace for plugin options fields. This must match settings_fields() used when rendering the form.
 			self::PREFIX . 'options', // The name of the plugin options entry in the database.
 			array( &$this, 'options_validate' ) // The callback method to validate plugin options
 		);
@@ -340,16 +332,19 @@ class Admin extends Buffer {
 	/* Buffer Options */
 	// Generate plugin options fields from profiles
 	function buffer_options() {
-		// Iterate through each profile
-		foreach ( $this->profile as $profile ) {
+		// Iterate through each service
+		foreach ( $this->service as $service ) {
 			// Add a settings section for each type of social network
 			add_settings_section(
-				self::PREFIX . $profile['service'], // ID of the section
-				null, // Title of the section, unneeded here because it's handled by the tabbed navigation
+				self::PREFIX . $service, // ID of the section
+				$this->apiconfig['services'][$service]['types']['profile']['name'], // Title of the section
 				null, // Callback for the section - unneeded for this plugin
 				self::ID // Page ID for the options page
 			);
-			
+		}
+		
+		// Iterate through each profile
+		foreach ( $this->profile as $profile ) {
 			// Create a settings field to manage each social media profile
 			add_settings_field(
 				$profile['id'], // Field ID (use the profile ID from Buffer)
@@ -367,7 +362,7 @@ class Admin extends Buffer {
 		// Options section
 		add_settings_section(
 			self::PREFIX . 'buffer_auth', // ID of the section
-			null, // Title of the section, unneeded here because it's handled by the tabbed navigation
+			'Buffer Authentication', // Title of the section
 			array( &$this, 'auth_callback' ), // Callback method to display plugin options
 			self::ID // Page ID for the options page
 		);
@@ -613,39 +608,9 @@ class Admin extends Buffer {
 		<div class="wrap">
 			<h2><?php echo self::NAME; ?></h2>
 			
-			<?php
-			// Check to see if 'tab' is set, and if so get the value
-			if ( ! empty( $_GET['tab'] ) ) {
-				$active_tab = $_GET['tab'];
-			}
-			// If 'tab' is not set, default to the first service in the array
-			elseif ( empty( $_GET['tab'] ) && ! empty( $this->service ) ) {
-				$active_tab = $this->service[0];
-			}
-			// If neither 'tab' nor the service array are set, default to the Buffer Authentication tab
-			else {
-				$active_tab = 'buffer_auth';
-			}
-			?>
-			
-			<h2 class="nav-tab-wrapper">
-			<?php
-			// If the service array is set, set up the tabs for the services
-			if ( ! empty( $this->service ) ) {
-				// Iterate through each service in the array to create each tab
-				foreach( $this->service as $service ) {
-					?>
-					<a href="?page=<?php echo self::ID; ?>&tab=<?php echo $service; ?>" class="nav-tab <?php echo $service == $active_tab ? 'nav-tab-active' : ''; ?>"><?php echo $this->apiconfig['services'][$service]['types']['profile']['name']; ?></a>
-					<?php
-				}
-			}
-			?>
-				<a href="?page=<?php echo self::ID; ?>&tab=buffer_auth" class="nav-tab <?php echo 'buffer_auth' == $active_tab ? 'nav-tab-active' : ''; ?>">Buffer Authentication</a>
-			</h2><!-- .nav-tab-wrapper -->
-			
 			<form action="options.php" method="post">
 				<?php
-				settings_fields( self::PREFIX . $active_tab ); // Options page information fields
+				settings_fields( self::PREFIX . 'options' ); // Options page information fields
 				do_settings_sections( self::ID ); // Display the section for the current tab
 				
 				// Show the submit button on any screen other than OAuth authorization
